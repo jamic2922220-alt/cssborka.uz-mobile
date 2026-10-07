@@ -101,7 +101,7 @@ public class MainActivity extends Activity {
                 {"s1b", "YUKLAB OLISH", "СКАЧАТЬ", "DOWNLOAD"},
                 {"s2", "2. Dvijokni bir marta oching va fayllarga ruxsat bering, keyin shu yerga qayting", "2. Откройте движок один раз и разрешите доступ к файлам, затем вернитесь сюда", "2. Open the engine once, allow file access, then come back"},
                 {"s2b", "DVIJOKNI OCHISH", "ОТКРЫТЬ ДВИЖОК", "OPEN ENGINE"},
-                {"s3", "3. O'yin fayllarini yuklab oling", "3. Скачайте файлы игры", "3. Download game files"},
+                {"s3", "O'yin fayllarini yuklab oling (bir marta)", "Скачайте файлы игры (один раз)", "Download game files (one time)"},
                 {"s3b", "YUKLASH", "СКАЧАТЬ", "DOWNLOAD"},
                 {"done", "✓ Tayyor", "✓ Готово", "✓ Done"},
                 {"perm", "Fayllarni saqlash uchun ruxsat bering", "Разрешите доступ к файлам для сохранения", "Allow file access to save files"},
@@ -234,20 +234,12 @@ public class MainActivity extends Activity {
     }
 
     // ---------------- dvijok va o'yin fayllari ----------------
-    private String enginePackage() {
-        String[] pkgs = {"su.xash.engine", "su.xash.engine.test"};
-        for (String p : pkgs) {
-            try {
-                getPackageManager().getPackageInfo(p, 0);
-                return p;
-            } catch (PackageManager.NameNotFoundException ignored) {
-            }
-        }
-        return null;
-    }
-
+    // Dvijok (Xash3D FWGS) shu ilovaning ichida - alohida o'rnatish shart emas.
+    // O'yin fayllari ilovaning o'z papkasida saqlanadi - hech qanday ruxsat kerak emas.
     private File baseDir() {
-        return new File(Environment.getExternalStorageDirectory(), "xash");
+        File ext = getExternalFilesDir(null);
+        if (ext == null) ext = getFilesDir();
+        return new File(ext, "xash");
     }
 
     private boolean hasData() {
@@ -255,28 +247,19 @@ public class MainActivity extends Activity {
         return new File(b, "valve/liblist.gam").exists() && new File(b, "cstrike/liblist.gam").exists();
     }
 
-    private SharedPreferences prefs() {
-        return getSharedPreferences("boosttop", Context.MODE_PRIVATE);
-    }
-
-    private boolean engineOpened() {
-        return prefs().getBoolean("engine_opened", false);
-    }
-
     private boolean setupDone() {
-        return enginePackage() != null && hasData();
+        return hasData();
     }
 
     private void launchGame(String ip) {
-        String pkg = enginePackage();
-        if (pkg == null || !hasData()) {
+        if (!hasData()) {
             toastLike(t("needsetup"));
             return;
         }
         String argv = "-dev 2 -log -dll @yapb";
         if (ip != null) argv += " +connect " + ip;
         try {
-            startActivity(new Intent().setComponent(new ComponentName(pkg, "su.xash.engine.XashActivity"))
+            startActivity(new Intent().setComponent(new ComponentName(getPackageName(), "su.xash.engine.XashActivity"))
                     .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK)
                     .putExtra("gamedir", "cstrike")
                     .putExtra("gamelibdir", getApplicationInfo().nativeLibraryDir)
@@ -288,42 +271,8 @@ public class MainActivity extends Activity {
         }
     }
 
-    private void openEngine() {
-        String pkg = enginePackage();
-        if (pkg == null) return;
-        Intent i = getPackageManager().getLaunchIntentForPackage(pkg);
-        if (i != null) {
-            prefs().edit().putBoolean("engine_opened", true).apply();
-            startActivity(i);
-        }
-    }
-
-    private boolean hasStoragePermission() {
-        if (Build.VERSION.SDK_INT >= 30) return Environment.isExternalStorageManager();
-        if (Build.VERSION.SDK_INT >= 23)
-            return checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED;
-        return true;
-    }
-
-    private void askStoragePermission() {
-        toastLike(t("perm"));
-        if (Build.VERSION.SDK_INT >= 30) {
-            try {
-                startActivity(new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION, Uri.parse("package:" + getPackageName())));
-            } catch (Exception e) {
-                startActivity(new Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION));
-            }
-        } else if (Build.VERSION.SDK_INT >= 23) {
-            requestPermissions(new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE}, 1);
-        }
-    }
-
     private void confirmDownload() {
         if (downloading) return;
-        if (!hasStoragePermission()) {
-            askStoragePermission();
-            return;
-        }
         new AlertDialog.Builder(this)
                 .setMessage(String.format(Locale.US, t("dlwarn"), dataSizeMb))
                 .setPositiveButton(t("yes"), new android.content.DialogInterface.OnClickListener() {
@@ -361,7 +310,9 @@ public class MainActivity extends Activity {
                     byte[] buf = new byte[65536];
                     long lastUi = 0;
                     while ((e = zip.getNextEntry()) != null) {
-                        File out = new File(base, e.getName());
+                        String name = normalizeEntry(e.getName());
+                        if (name == null) continue;
+                        File out = new File(base, name);
                         if (!out.getCanonicalPath().startsWith(basePath)) continue; // xavfsizlik
                         if (e.isDirectory()) {
                             out.mkdirs();
@@ -406,6 +357,18 @@ public class MainActivity extends Activity {
                 });
             }
         }).start();
+    }
+
+    /** Zip ichida ortiqcha papka bo'lsa ham (masalan cs16_data/cstrike/...) to'g'ri joyga ochadi. */
+    private static String normalizeEntry(String n) {
+        n = n.replace('\\', '/');
+        String[] roots = {"valve/", "cstrike/"};
+        for (String r : roots) {
+            if (n.startsWith(r)) return n;
+            int k = n.indexOf("/" + r);
+            if (k >= 0) return n.substring(k + 1);
+        }
+        return null;
     }
 
     private void showProgress(long done, long total) {
@@ -589,19 +552,6 @@ public class MainActivity extends Activity {
         card.setLayoutParams(lp);
         card.addView(text(t("setup"), 16, C_GOLD, true));
 
-        boolean engine = enginePackage() != null;
-        card.addView(step(t("s1"), engine ? null : t("s1b"), engine, new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                openUrl(engineUrl);
-            }
-        }));
-        card.addView(step(t("s2"), engine ? t("s2b") : null, engineOpened(), new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                openEngine();
-            }
-        }));
         boolean data = hasData();
         card.addView(step(t("s3"), (data || downloading) ? null : t("s3b"), data, new View.OnClickListener() {
             @Override

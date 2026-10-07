@@ -16,6 +16,18 @@ android {
 		versionCode = getBuildNum()
 		minSdk = 21
 		targetSdk = 36
+
+		// Xash3D dvijogi shu ABI'lar uchun yig'iladi
+		ndk {
+			abiFilters 'armeabi-v7a', 'arm64-v8a', 'x86'
+		}
+	}
+
+	// Dvijokning o'z fayllari (extras) - CI'da engine_assets ga qo'yiladi
+	sourceSets {
+		main {
+			assets.srcDirs += ['src/main/engine_assets']
+		}
 	}
 
 	compileOptions {
@@ -36,8 +48,8 @@ android {
 
 	packaging {
 		jniLibs {
-			keepDebugSymbols.add("**/*.so")
 			useLegacyPackaging = true
+			pickFirsts.add("**/libc++_shared.so")
 		}
 	}
 
