@@ -1,0 +1,32 @@
+name: boost-top Android APK
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  android:
+    name: Android APK
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
+          submodules: recursive
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: 17
+          distribution: 'temurin'
+          cache: gradle
+      - name: Build APK
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleGitDebug
+          mv app/build/outputs/apk/git/debug/app-git-debug.apk CS16-boost-top.apk
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: CS16-boost-top-APK
+          path: android/CS16-boost-top.apk
