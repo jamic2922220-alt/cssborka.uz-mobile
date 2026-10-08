@@ -25,6 +25,9 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.widget.Button;
+import android.widget.SeekBar;
+import android.graphics.Canvas;
+import android.graphics.Paint;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
@@ -57,6 +60,9 @@ public class MainActivity extends Activity {
     // ---------------- sozlamalar (saytdagi mobile.json ularni almashtira oladi) ----------------
     private static final String SERVERS_URL = "http://mmb.boost-top.com/servers.php";
     private static final String CONFIG_URL = "http://mmb.boost-top.com/mobile.json";
+    // Dvijok bu manzilga "/v1/servers/cstrike" qo'shib so'raydi
+    private static final String STATS_URL = "http://mmb.boost-top.com/stats.php";
+    private static final String MASTER_URL = "http://mmb.boost-top.com/ms.php?q=";
     private String dataUrl = "http://mmb.boost-top.com/mobile/cs16_data.zip";
     private String engineUrl = "https://github.com/FWGS/xash3d-fwgs/releases/tag/continuous";
     private String siteUrl = "https://boost-top.com";
@@ -112,6 +118,18 @@ public class MainActivity extends Activity {
                 {"dlok", "O'yin fayllari tayyor!", "Файлы игры готовы!", "Game files are ready!"},
                 {"dlerr", "Yuklashda xato: ", "Ошибка загрузки: ", "Download error: "},
                 {"needsetup", "Avval o'yinni sozlang (yuqoridagi qadamlar)", "Сначала настройте игру (шаги выше)", "Set up the game first (steps above)"},
+                {"settings", "Sozlamalar", "Настройки", "Settings"},
+                {"lang", "Til", "Язык", "Language"},
+                {"sens", "Sichqoncha / ekran sezgirligi", "Чувствительность", "Sensitivity"},
+                {"xsize", "Pritsel o'lchami", "Размер прицела", "Crosshair size"},
+                {"xcolor", "Pritsel rangi", "Цвет прицела", "Crosshair color"},
+                {"auto", "Avto", "Авто", "Auto"},
+                {"small", "Kichik", "Малый", "Small"},
+                {"medium", "O'rta", "Средний", "Medium"},
+                {"large", "Katta", "Большой", "Large"},
+                {"save", "Saqlash", "Сохранить", "Save"},
+                {"cancel", "Bekor qilish", "Отмена", "Cancel"},
+                {"saved", "Saqlandi. O'yinda qo'llanadi.", "Сохранено. Применится в игре.", "Saved. Applied in game."},
                 {"ad", "Serveringizni shu yerga chiqarish: boost-top.com", "Разместить свой сервер здесь: boost-top.com", "Promote your server here: boost-top.com"},
         };
         int col = "ru".equals(lang) ? 2 : ("en".equals(lang) ? 3 : 1);
@@ -159,7 +177,8 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         String l = Locale.getDefault().getLanguage();
-        lang = "ru".equals(l) || "uk".equals(l) || "be".equals(l) || "kk".equals(l) ? "ru" : ("en".equals(l) ? "en" : "uz");
+        String defLang = "ru".equals(l) || "uk".equals(l) || "be".equals(l) || "kk".equals(l) ? "ru" : ("en".equals(l) ? "en" : "uz");
+        lang = prefs().getString("lang", defLang);
 
         if (Build.VERSION.SDK_INT >= 21) {
             getWindow().setStatusBarColor(C_BG);
@@ -187,6 +206,17 @@ public class MainActivity extends Activity {
                 loadServers();
             }
         });
+        Button gear = button("⚙", C_LINE);
+        gear.setTextSize(TypedValue.COMPLEX_UNIT_SP, 18);
+        gear.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                showSettings();
+            }
+        });
+        LinearLayout.LayoutParams glp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        glp.setMargins(0, 0, dp(8), 0);
+        head.addView(gear, glp);
         head.addView(refresh);
         root.addView(head);
 
@@ -224,6 +254,7 @@ public class MainActivity extends Activity {
 
         setContentView(root);
         loadConfig();
+        sendStat("open", null);
     }
 
     @Override
@@ -251,13 +282,51 @@ public class MainActivity extends Activity {
         return hasData();
     }
 
+    /** O'yin ichidagi "Favorites" bo'limiga saytdagi serverlarni yozadi (cstrike/favorite_servers.lst). */
+    private void writeFavorites() {
+        try {
+            JSONArray sections = lastData == null ? null : lastData.optJSONArray("sections");
+            if (sections == null) sections = new JSONArray();
+            StringBuilder sb = new StringBuilder();
+            java.util.HashSet<String> seen = new java.util.HashSet<String>();
+            for (int i = 0; i < sections.length(); i++) {
+                JSONObject s = sections.optJSONObject(i);
+                JSONArray list = s == null ? null : s.optJSONArray("servers");
+                if (list == null) continue;
+                for (int k = 0; k < list.length(); k++) {
+                    JSONObject sv = list.optJSONObject(k);
+                    String ip = sv == null ? "" : sv.optString("ip", "");
+                    if (ip.length() > 0 && seen.add(ip)) sb.append(ip).append(" gs\n");
+                }
+            }
+            File dir = new File(baseDir(), "cstrike");
+            if (!dir.exists()) return;
+            // master-server manzili qo'shtirnoq ichida bo'lishi shart ("//" izoh deb o'qilmasin)
+            FileOutputStream ms = new FileOutputStream(new File(dir, "boosttop_ms.cfg"));
+            ms.write(("addmasterstatic \"" + MASTER_URL + "\"\n").getBytes("UTF-8"));
+            ms.close();
+            if (sb.length() == 0) return;
+            FileOutputStream fo = new FileOutputStream(new File(dir, "favorite_servers.lst"));
+            fo.write(sb.toString().getBytes("UTF-8"));
+            fo.close();
+        } catch (Exception ignored) {
+        }
+    }
+
     private void launchGame(String ip) {
         if (!hasData()) {
             toastLike(t("needsetup"));
             return;
         }
-        String argv = "-dev 2 -log -dll @yapb";
-        if (ip != null) argv += " +connect " + ip;
+        writeFavorites();
+        writeSettings();
+        // O'yin ichidagi server ro'yxatida faqat boost-top.com serverlari chiqsin:
+        // standart (begona) master-serverlarni o'chirib, o'zimiznikini qo'shamiz.
+        String argv = "-log -dll @yapb +clearmasters +exec boosttop_ms.cfg +exec boosttop_settings.cfg";
+        if (ip != null) {
+            argv += " +connect " + ip;
+            sendStat("connect", ip);
+        }
         try {
             startActivity(new Intent().setComponent(new ComponentName(getPackageName(), "su.xash.engine.XashActivity"))
                     .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK)
@@ -269,6 +338,238 @@ public class MainActivity extends Activity {
         } catch (Exception e) {
             toastLike(String.valueOf(e.getMessage()));
         }
+    }
+
+    // ---------------- sozlamalar: til, sezgirlik, pritsel ----------------
+    private static final String[] LANGS = {"uz", "ru", "en"};
+    private static final String[] LANG_NAMES = {"O'zbekcha", "Русский", "English"};
+    private static final String[] XSIZES = {"auto", "small", "medium", "large"};
+    private static final int[] XCOLORS = {0xFF32FA32, 0xFFFA3232, 0xFF3232FA, 0xFFFAFA32, 0xFF32FAFA, 0xFFFFFFFF, 0xFFFA32FA};
+
+    private SharedPreferences prefs() {
+        return getSharedPreferences("boosttop", MODE_PRIVATE);
+    }
+
+    private static String engineLang(String l) {
+        return "ru".equals(l) ? "russian" : ("en".equals(l) ? "english" : "uzbek");
+    }
+
+    /** Sozlamalarni o'yin konfiguratsiyasiga yozadi (cstrike/boosttop_settings.cfg va config.cfg). */
+    private void writeSettings() {
+        try {
+            SharedPreferences p = prefs();
+            int c = p.getInt("xcolor", XCOLORS[0]);
+            String color = ((c >> 16) & 0xff) + " " + ((c >> 8) & 0xff) + " " + (c & 0xff);
+            String[][] cv = {
+                    {"ui_language", engineLang(lang)},
+                    {"sensitivity", String.format(Locale.US, "%.1f", p.getFloat("sens", 3.0f))},
+                    {"cl_crosshair_size", p.getString("xsize", "auto")},
+                    {"cl_crosshair_color", color},
+                    {"xhair_enable", "0"},
+                    {"developer", "0"},
+            };
+            File dir = new File(baseDir(), "cstrike");
+            if (!dir.exists()) return;
+            StringBuilder sb = new StringBuilder();
+            for (String[] v : cv) sb.append(v[0]).append(" \"").append(v[1]).append("\"\n");
+            FileOutputStream fo = new FileOutputStream(new File(dir, "boosttop_settings.cfg"));
+            fo.write(sb.toString().getBytes("UTF-8"));
+            fo.close();
+            // config.cfg ga ham yozamiz - til menyu ochilishidan oldin o'qilishi uchun
+            File cfg = new File(dir, "config.cfg");
+            if (!cfg.exists()) return; // birinchi ishga tushishda dvijok o'zi yaratadi
+            StringBuilder out = new StringBuilder();
+            {
+                java.io.BufferedReader br = new java.io.BufferedReader(new java.io.InputStreamReader(new java.io.FileInputStream(cfg), "UTF-8"));
+                String line;
+                while ((line = br.readLine()) != null) {
+                    String tl = line.trim();
+                    boolean ours = false;
+                    for (String[] v : cv) if (tl.startsWith(v[0] + " ") || tl.equals(v[0])) ours = true;
+                    if (!ours) out.append(line).append('\n');
+                }
+                br.close();
+            }
+            out.append(sb);
+            FileOutputStream co = new FileOutputStream(cfg);
+            co.write(out.toString().getBytes("UTF-8"));
+            co.close();
+        } catch (Exception ignored) {
+        }
+    }
+
+    /** Pritsel ko'rinishi (namuna). */
+    private class CrossView extends View {
+        int color = XCOLORS[0];
+        String size = "auto";
+        final Paint paint = new Paint();
+
+        CrossView(Context c) {
+            super(c);
+        }
+
+        @Override
+        protected void onDraw(Canvas cv) {
+            cv.drawColor(0xFF2A3A2A);
+            paint.setColor(color);
+            paint.setStrokeWidth(dp(2));
+            float cx = getWidth() / 2f, cy = getHeight() / 2f;
+            float len = dp("small".equals(size) ? 6 : "large".equals(size) ? 14 : 10);
+            float gap = dp("small".equals(size) ? 3 : "large".equals(size) ? 7 : 5);
+            cv.drawLine(cx - gap - len, cy, cx - gap, cy, paint);
+            cv.drawLine(cx + gap, cy, cx + gap + len, cy, paint);
+            cv.drawLine(cx, cy - gap - len, cx, cy - gap, paint);
+            cv.drawLine(cx, cy + gap, cx, cy + gap + len, paint);
+        }
+    }
+
+    private LinearLayout chipRow() {
+        LinearLayout r = new LinearLayout(this);
+        r.setOrientation(LinearLayout.HORIZONTAL);
+        r.setPadding(0, dp(6), 0, dp(4));
+        return r;
+    }
+
+    private void showSettings() {
+        final SharedPreferences p = prefs();
+        final String[] selLang = {lang};
+        final float[] selSens = {p.getFloat("sens", 3.0f)};
+        final String[] selSize = {p.getString("xsize", "auto")};
+        final int[] selColor = {p.getInt("xcolor", XCOLORS[0])};
+
+        ScrollView sv = new ScrollView(this);
+        final LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(dp(18), dp(14), dp(18), dp(6));
+        box.setBackgroundColor(C_CARD);
+        sv.addView(box);
+
+        // til
+        box.addView(text(t("lang"), 14, C_GOLD, true));
+        final LinearLayout langRow = chipRow();
+        final Button[] langBtns = new Button[LANGS.length];
+        for (int i = 0; i < LANGS.length; i++) {
+            final int k = i;
+            langBtns[i] = button(LANG_NAMES[i], C_LINE);
+            langBtns[i].setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    selLang[0] = LANGS[k];
+                    for (int j = 0; j < LANGS.length; j++) langBtns[j].setBackground(round(j == k ? C_ACCENT : C_LINE, 8, 0));
+                }
+            });
+            langBtns[i].setBackground(round(LANGS[i].equals(selLang[0]) ? C_ACCENT : C_LINE, 8, 0));
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+            lp.setMargins(0, 0, dp(6), 0);
+            langRow.addView(langBtns[i], lp);
+        }
+        box.addView(langRow);
+
+        // sezgirlik
+        final TextView sensLabel = text("", 14, C_GOLD, true);
+        sensLabel.setPadding(0, dp(12), 0, 0);
+        sensLabel.setText(t("sens") + ": " + String.format(Locale.US, "%.1f", selSens[0]));
+        box.addView(sensLabel);
+        SeekBar sb = new SeekBar(this);
+        sb.setMax(95); // 0.5 .. 10.0
+        sb.setProgress(Math.round((selSens[0] - 0.5f) * 10));
+        sb.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar s, int v, boolean u) {
+                selSens[0] = 0.5f + v / 10f;
+                sensLabel.setText(t("sens") + ": " + String.format(Locale.US, "%.1f", selSens[0]));
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar s) {
+            }
+
+            @Override
+            public void onStopTrackingTouch(SeekBar s) {
+            }
+        });
+        box.addView(sb);
+
+        // pritsel namunasi
+        final CrossView cross = new CrossView(this);
+        cross.color = selColor[0];
+        cross.size = selSize[0];
+        LinearLayout.LayoutParams cvp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(70));
+        cvp.setMargins(0, dp(12), 0, 0);
+        box.addView(cross, cvp);
+
+        // o'lcham
+        TextView xs = text(t("xsize"), 14, C_GOLD, true);
+        xs.setPadding(0, dp(10), 0, 0);
+        box.addView(xs);
+        LinearLayout sizeRow = chipRow();
+        final Button[] sizeBtns = new Button[XSIZES.length];
+        for (int i = 0; i < XSIZES.length; i++) {
+            final int k = i;
+            sizeBtns[i] = button(t(XSIZES[i]), C_LINE);
+            sizeBtns[i].setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
+            sizeBtns[i].setBackground(round(XSIZES[i].equals(selSize[0]) ? C_ACCENT : C_LINE, 8, 0));
+            sizeBtns[i].setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    selSize[0] = XSIZES[k];
+                    cross.size = XSIZES[k];
+                    cross.invalidate();
+                    for (int j = 0; j < XSIZES.length; j++) sizeBtns[j].setBackground(round(j == k ? C_ACCENT : C_LINE, 8, 0));
+                }
+            });
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+            lp.setMargins(0, 0, dp(5), 0);
+            sizeRow.addView(sizeBtns[i], lp);
+        }
+        box.addView(sizeRow);
+
+        // rang
+        TextView xc = text(t("xcolor"), 14, C_GOLD, true);
+        xc.setPadding(0, dp(10), 0, 0);
+        box.addView(xc);
+        LinearLayout colorRow = chipRow();
+        final View[] sw = new View[XCOLORS.length];
+        for (int i = 0; i < XCOLORS.length; i++) {
+            final int k = i;
+            sw[i] = new View(this);
+            sw[i].setBackground(round(XCOLORS[i], 18, XCOLORS[i] == selColor[0] ? Color.WHITE : C_LINE));
+            sw[i].setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    selColor[0] = XCOLORS[k];
+                    cross.color = XCOLORS[k];
+                    cross.invalidate();
+                    for (int j = 0; j < XCOLORS.length; j++) {
+                        GradientDrawable d = round(XCOLORS[j], 18, j == k ? Color.WHITE : C_LINE);
+                        if (j == k) d.setStroke(dp(3), Color.WHITE);
+                        sw[j].setBackground(d);
+                    }
+                }
+            });
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(dp(34), dp(34));
+            lp.setMargins(0, 0, dp(8), 0);
+            colorRow.addView(sw[i], lp);
+        }
+        box.addView(colorRow);
+
+        new AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog)
+                .setTitle("⚙ " + t("settings"))
+                .setView(sv)
+                .setPositiveButton(t("save"), new android.content.DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(android.content.DialogInterface d, int w) {
+                        boolean langChanged = !selLang[0].equals(lang);
+                        p.edit().putString("lang", selLang[0]).putFloat("sens", selSens[0])
+                                .putString("xsize", selSize[0]).putInt("xcolor", selColor[0]).apply();
+                        lang = selLang[0];
+                        writeSettings();
+                        toastLike(t("saved"));
+                        if (langChanged) recreate();
+                    }
+                })
+                .setNegativeButton(t("cancel"), null)
+                .show();
     }
 
     private void confirmDownload() {
@@ -398,6 +699,38 @@ public class MainActivity extends Activity {
             if (r > 0) count += r;
             return r;
         }
+    }
+
+    // ---------------- statistika (boost-top.com) ----------------
+    /** Telefonning shifrlangan raqami (asl ANDROID_ID saytga yuborilmaydi). */
+    private String deviceHash() {
+        try {
+            String id = Settings.Secure.getString(getContentResolver(), Settings.Secure.ANDROID_ID);
+            if (id == null) id = "unknown";
+            java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256");
+            byte[] h = md.digest((getPackageName() + "|" + id).getBytes("UTF-8"));
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < 16; i++) sb.append(String.format(Locale.US, "%02x", h[i] & 0xff));
+            return sb.toString();
+        } catch (Exception e) {
+            return "00000000000000000000000000000000";
+        }
+    }
+
+    /** Fonda saytga xabar yuboradi: ilova ochildi yoki serverga ulandi. */
+    private void sendStat(final String action, final String ip) {
+        final String dev = deviceHash();
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    String url = STATS_URL + "?a=" + action + "&d=" + dev;
+                    if (ip != null) url += "&ip=" + java.net.URLEncoder.encode(ip, "UTF-8");
+                    httpGet(url);
+                } catch (Exception ignored) {
+                }
+            }
+        }).start();
     }
 
     // ---------------- tarmoq ----------------
