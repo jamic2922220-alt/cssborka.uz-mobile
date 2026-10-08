@@ -83,6 +83,10 @@ jobs:
           assert 'CrashReports' not in s, 'CrashReports qoldi'
           open(p, 'w', encoding='utf-8').write(s)
 
+          # ilova build raqami (avtomatik yangilanish uchun)
+          os.makedirs(os.path.join(app, 'engine_assets'), exist_ok=True)
+          open(os.path.join(app, 'engine_assets', 'bt_build.txt'), 'w').write(os.environ.get('GITHUB_RUN_NUMBER', '0'))
+
           # touch tugmalari rasmlari, menyu fayllari, bot sozlamalari -> APK ichiga (binafsha kvadratlar bo'lmasin)
           ea = os.path.join(app, 'engine_assets')
           for src in ['3rdparty/cs16client-extras', '3rdparty/yapb/cfg']:
@@ -151,8 +155,23 @@ jobs:
             -Porg.gradle.java.installations.paths="$JAVA_HOME" \
             -Porg.gradle.java.installations.auto-download=false
           mv app/build/outputs/apk/git/debug/app-git-debug.apk CS16-cssborka.apk
+      - name: Sign APK (doimiy kalit)
+        working-directory: android
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ]; then echo "::error::KEYSTORE_BASE64 secret yo'q"; exit 1; fi
+          echo "$KEYSTORE_BASE64" | base64 -d > boosttop.jks
+          BT=$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)
+          "$ANDROID_HOME/build-tools/$BT/apksigner" sign --ks boosttop.jks --ks-key-alias boosttop \
+            --ks-pass env:KEYSTORE_PASSWORD --key-pass env:KEYSTORE_PASSWORD \
+            --out CS16-boosttop.apk CS16-cssborka.apk
+          "$ANDROID_HOME/build-tools/$BT/apksigner" verify --print-certs CS16-boosttop.apk | head -3
+          rm -f boosttop.jks CS16-cssborka.apk
+          echo "BUILD=${{ github.run_number }}" 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: CS16-cssborka-APK
-          path: android/CS16-cssborka.apk
+          name: CS16-boosttop-APK-build${{ github.run_number }}
+          path: android/CS16-boosttop.apk
