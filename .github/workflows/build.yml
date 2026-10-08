@@ -82,6 +82,44 @@ jobs:
           s = re.sub(r'CrashReports\.writeIntentInfo\([^;]*\);', '', s)
           assert 'CrashReports' not in s, 'CrashReports qoldi'
           open(p, 'w', encoding='utf-8').write(s)
+
+          # touch tugmalari rasmlari, menyu fayllari, bot sozlamalari -> APK ichiga (binafsha kvadratlar bo'lmasin)
+          ea = os.path.join(app, 'engine_assets')
+          for src in ['3rdparty/cs16client-extras', '3rdparty/yapb/cfg']:
+              shutil.copytree(src, ea, dirs_exist_ok=True); print('extras', src)
+          # CMake ham shu fayllarni src/main/assets ga ko'chiradi - takrorlanmasin, o'chiramiz
+          p = 'CMakeLists.txt'
+          s = open(p, encoding='utf-8').read()
+          s2 = re.sub(r'file\(\s*REMOVE_RECURSE \$\{EXTRAS_OUTPUT\}\s*\)', '', s)
+          s2 = re.sub(r'file\(\s*COPY \$\{EXTRAS_FILES\} \$\{YAPB_FILES\}\s*DESTINATION \$\{EXTRAS_OUTPUT\}\s*\)', '', s2)
+          assert s2 != s, 'CMake extras copy topilmadi'
+          open(p, 'w', encoding='utf-8').write(s2)
+
+          # Bosh menyu: kompyuter versiyasidagidek (Hazard course, Load game, Readme, Previews, Custom game yo'q)
+          p = '3rdparty/mainui_cpp/menus/Main.cpp'
+          s = open(p, encoding='utf-8').read()
+          for item in ['readme', 'previews', 'saveRestore', 'hazardCourse', 'customGame']:
+              a = 'AddItem( %s );' % item
+              assert a in s, a
+              s = s.replace(a, ';')
+          i = s.index('\tpreviews.SetCoord( hoffset, previews_voffset );')
+          j = s.index("\t// now figure out what's visible")
+          s = s[:i] + '''	bool single = gpGlobals->maxClients < 2;
+          	int yoffset = previews_voffset + ygap;
+          	quit.SetCoord( hoffset, yoffset ); yoffset -= ygap;
+          	configuration.SetCoord( hoffset, yoffset ); yoffset -= ygap;
+          	multiPlayer.SetCoord( hoffset, yoffset ); yoffset -= ygap;
+          	newGame.SetCoord( hoffset, yoffset );
+          	if( connected )
+          	{
+          		if( !single ) { disconnect.SetCoord( hoffset, yoffset ); yoffset -= ygap; }
+          		resumeGame.SetCoord( hoffset, yoffset ); yoffset -= ygap;
+          	}
+          	console.SetCoord( hoffset, yoffset );
+
+          ''' + s[j:]
+          open(p, 'w', encoding='utf-8').write(s)
+          print('Main.cpp patched')
           PY
       - name: Setup Java (JetBrains 21)
         uses: actions/setup-java@v5
