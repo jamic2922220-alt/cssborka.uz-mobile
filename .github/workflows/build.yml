@@ -87,6 +87,18 @@ jobs:
           ea = os.path.join(app, 'engine_assets')
           for src in ['3rdparty/cs16client-extras', '3rdparty/yapb/cfg']:
               shutil.copytree(src, ea, dirs_exist_ok=True); print('extras', src)
+          # Ekrandagi ⚙ (touch_edit) tugmasi tugma muharririni emas, o'yin menyusini ochsin
+          n_edit = 0
+          for root, _, files in os.walk(ea):
+              for fn in files:
+                  if not fn.endswith('.cfg'): continue
+                  fp = os.path.join(root, fn)
+                  t = open(fp, encoding='utf-8', errors='replace').read()
+                  t2 = re.sub(r'^(\s*touch_addbutton\s+"[^"]*edit[^"]*"\s+"[^"]*"\s+)"[^"]*"',
+                              r'\1"togglemenu"', t, flags=re.M | re.I)
+                  if t2 != t:
+                      open(fp, 'w', encoding='utf-8').write(t2); n_edit += 1; print('touch_edit ->', fp)
+          print('touch cfg patched:', n_edit)
           # CMake ham shu fayllarni src/main/assets ga ko'chiradi - takrorlanmasin, o'chiramiz
           p = 'CMakeLists.txt'
           s = open(p, encoding='utf-8').read()
@@ -118,6 +130,10 @@ jobs:
           	console.SetCoord( hoffset, yoffset );
 
           ''' + s[j:]
+          # "Multiplayer" o'rniga kompyuterdagidek "Найти серверы" - to'g'ridan-to'g'ri internet serverlar ro'yxati
+          s2 = re.sub(r'multiPlayer\.SetNameAndStatus\(\s*L\(\s*"GameUI_Multiplayer"\s*\)',
+                      'multiPlayer.SetNameAndStatus( L( "GameUI_GameMenu_FindServers" )', s)
+          print('multiplayer label ->', 'find servers' if s2 != s else 'NOT FOUND'); s = s2
           open(p, 'w', encoding='utf-8').write(s)
           print('Main.cpp patched')
           PY
