@@ -42,6 +42,8 @@ jobs:
     name: Android APK
     runs-on: ubuntu-latest
     needs: engine
+    permissions:
+      contents: write
     steps:
       - name: Checkout sources
         uses: actions/checkout@v5
@@ -175,3 +177,11 @@ jobs:
         with:
           name: CS16-boosttop-APK-build${{ github.run_number }}
           path: android/CS16-boosttop.apk
+      - name: Release (APK zip'siz)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_number }}
+          name: CS 1.6 boost-top - build ${{ github.run_number }}
+          body: "Android APK (build ${{ github.run_number }}). mobile.json -> \"apk_build\": ${{ github.run_number }}"
+          files: android/CS16-boosttop.apk
+          make_latest: true
