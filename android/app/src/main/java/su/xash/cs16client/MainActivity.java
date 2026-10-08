@@ -67,6 +67,9 @@ public class MainActivity extends Activity {
     private String engineUrl = "https://github.com/FWGS/xash3d-fwgs/releases/tag/continuous";
     private String siteUrl = "https://boost-top.com";
     private int dataSizeMb = 250;
+    // avtomatik yangilanish: saytdagi mobile.json -> apk_build / apk_url
+    private volatile int apkBuild = 0;
+    private volatile String apkUrl = "";
 
     // ---------------- ranglar ----------------
     private static final int C_BG = 0xFF0A1426;
@@ -118,6 +121,9 @@ public class MainActivity extends Activity {
                 {"dlok", "O'yin fayllari tayyor!", "Файлы игры готовы!", "Game files are ready!"},
                 {"dlerr", "Yuklashda xato: ", "Ошибка загрузки: ", "Download error: "},
                 {"needsetup", "Avval o'yinni sozlang (yuqoridagi qadamlar)", "Сначала настройте игру (шаги выше)", "Set up the game first (steps above)"},
+                {"upd", "Yangi versiya chiqdi!", "Вышла новая версия!", "New version available!"},
+                {"updb", "YANGILASH", "ОБНОВИТЬ", "UPDATE"},
+                {"updhint", "APK yuklanadi - keyin uni ochib o'rnating. O'yin fayllari saqlanib qoladi.", "APK скачается - откройте его и установите. Файлы игры сохранятся.", "The APK will download - open it to install. Game files are kept."},
                 {"settings", "Sozlamalar", "Настройки", "Settings"},
                 {"lang", "Til", "Язык", "Language"},
                 {"sens", "Sichqoncha / ekran sezgirligi", "Чувствительность", "Sensitivity"},
@@ -785,6 +791,14 @@ public class MainActivity extends Activity {
                     engineUrl = j.optString("engine_url", engineUrl);
                     siteUrl = j.optString("site", siteUrl);
                     dataSizeMb = j.optInt("data_size_mb", dataSizeMb);
+                    apkBuild = j.optInt("apk_build", 0);
+                    apkUrl = j.optString("apk_url", "");
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            render();
+                        }
+                    });
                 } catch (Exception ignored) {
                 }
             }
@@ -862,6 +876,7 @@ public class MainActivity extends Activity {
         dlBar = null;
         dlText = null;
 
+        if (apkBuild > myBuild() && apkUrl.length() > 0) content.addView(updateCard());
         if (!setupDone() || downloading) content.addView(setupCard());
 
         status = text("", 13, C_MUTED, false);
@@ -896,6 +911,41 @@ public class MainActivity extends Activity {
         }
         status.setText(shown == 0 ? t("empty") : "");
         status.setVisibility(shown == 0 ? View.VISIBLE : View.GONE);
+    }
+
+    /** Ilovaning build raqami (CI assets/bt_build.txt ga yozadi). */
+    private int myBuild() {
+        try {
+            InputStream in = getAssets().open("bt_build.txt");
+            byte[] b = new byte[32];
+            int n = in.read(b);
+            in.close();
+            return Integer.parseInt(new String(b, 0, Math.max(0, n), "UTF-8").trim());
+        } catch (Exception e) {
+            return Integer.MAX_VALUE; // noma'lum bo'lsa yangilanish taklif qilinmaydi
+        }
+    }
+
+    private View updateCard() {
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.HORIZONTAL);
+        card.setGravity(Gravity.CENTER_VERTICAL);
+        card.setPadding(dp(14), dp(12), dp(14), dp(12));
+        card.setBackground(round(0xFF0F3A1E, 12, 0xFF35C46A));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        lp.setMargins(0, dp(4), 0, dp(8));
+        card.setLayoutParams(lp);
+        card.addView(text(t("upd"), 14, C_TEXT, true), new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        Button b = button(t("updb"), 0xFF22A355);
+        b.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                toastLike(t("updhint"));
+                openUrl(apkUrl);
+            }
+        });
+        card.addView(b);
+        return card;
     }
 
     private View setupCard() {
