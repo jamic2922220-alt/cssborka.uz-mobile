@@ -25,6 +25,8 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.widget.Button;
+import android.widget.EditText;
+import android.widget.CheckBox;
 import android.widget.SeekBar;
 import android.graphics.Canvas;
 import android.graphics.Paint;
@@ -124,6 +126,12 @@ public class MainActivity extends Activity {
                 {"upd", "Yangi versiya chiqdi!", "Вышла новая версия!", "New version available!"},
                 {"updb", "YANGILASH", "ОБНОВИТЬ", "UPDATE"},
                 {"updhint", "APK yuklanadi - keyin uni ochib o'rnating. O'yin fayllari saqlanib qoladi.", "APK скачается - откройте его и установите. Файлы игры сохранятся.", "The APK will download - open it to install. Game files are kept."},
+                {"nick", "O'yindagi nik", "Ник в игре", "In-game nickname"},
+                {"gfx", "Grafika", "Графика", "Graphics"},
+                {"gfx_high", "Yuqori", "Высокая", "High"},
+                {"gfx_mid", "O'rta", "Средняя", "Medium"},
+                {"gfx_low", "Past (tez)", "Низкая (быстро)", "Low (fast)"},
+                {"fps", "FPS ni ko'rsatish", "Показывать FPS", "Show FPS"},
                 {"settings", "Sozlamalar", "Настройки", "Settings"},
                 {"lang", "Til", "Язык", "Language"},
                 {"sens", "Sichqoncha / ekran sezgirligi", "Чувствительность", "Sensitivity"},
@@ -372,12 +380,18 @@ public class MainActivity extends Activity {
                     {"cl_crosshair_size", p.getString("xsize", "auto")},
                     {"cl_crosshair_color", color},
                     {"xhair_enable", "0"},
+                    {"cl_showfps", p.getBoolean("fps", false) ? "1" : "0"},
+                    {"gl_picmip", "low".equals(p.getString("gfx", "high")) ? "1" : "0"},
+                    {"r_dynamic", "high".equals(p.getString("gfx", "high")) ? "1" : "0"},
+                    {"fps_max", "low".equals(p.getString("gfx", "high")) ? "60" : "100"},
                     {"developer", "0"},
             };
             File dir = new File(baseDir(), "cstrike");
             if (!dir.exists()) return;
             StringBuilder sb = new StringBuilder();
             for (String[] v : cv) sb.append(v[0]).append(" \"").append(v[1]).append("\"\n");
+            String nick = p.getString("nick", "").replace("\"", "").replace(";", "").trim();
+            if (nick.length() > 0) sb.append("name \"").append(nick).append("\"\n");
             FileOutputStream fo = new FileOutputStream(new File(dir, "boosttop_settings.cfg"));
             fo.write(sb.toString().getBytes("UTF-8"));
             fo.close();
@@ -392,6 +406,7 @@ public class MainActivity extends Activity {
                     String tl = line.trim();
                     boolean ours = false;
                     for (String[] v : cv) if (tl.startsWith(v[0] + " ") || tl.equals(v[0])) ours = true;
+                    if (p.getString("nick", "").trim().length() > 0 && tl.startsWith("name ")) ours = true;
                     if (!ours) out.append(line).append('\n');
                 }
                 br.close();
@@ -450,8 +465,23 @@ public class MainActivity extends Activity {
         box.setBackgroundColor(C_CARD);
         sv.addView(box);
 
+        // nik
+        box.addView(text(t("nick"), 14, C_GOLD, true));
+        final EditText nickEd = new EditText(this);
+        nickEd.setSingleLine(true);
+        nickEd.setTextColor(C_TEXT);
+        nickEd.setHintTextColor(C_MUTED);
+        String curNick = p.getString("nick", "");
+        if (curNick.length() == 0) curNick = playerName();
+        nickEd.setText(curNick);
+        nickEd.setHint("Player");
+        nickEd.setFilters(new android.text.InputFilter[]{new android.text.InputFilter.LengthFilter(31)});
+        box.addView(nickEd);
+
         // til
-        box.addView(text(t("lang"), 14, C_GOLD, true));
+        TextView lt = text(t("lang"), 14, C_GOLD, true);
+        lt.setPadding(0, dp(10), 0, 0);
+        box.addView(lt);
         final LinearLayout langRow = chipRow();
         final Button[] langBtns = new Button[LANGS.length];
         for (int i = 0; i < LANGS.length; i++) {
@@ -559,6 +589,38 @@ public class MainActivity extends Activity {
         }
         box.addView(colorRow);
 
+        // grafika
+        final String[] GFX = {"high", "mid", "low"};
+        final String[] selGfx = {p.getString("gfx", "high")};
+        TextView gt = text(t("gfx"), 14, C_GOLD, true);
+        gt.setPadding(0, dp(10), 0, 0);
+        box.addView(gt);
+        LinearLayout gfxRow = chipRow();
+        final Button[] gfxBtns = new Button[GFX.length];
+        for (int i = 0; i < GFX.length; i++) {
+            final int k = i;
+            gfxBtns[i] = button(t("gfx_" + GFX[i]), C_LINE);
+            gfxBtns[i].setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
+            gfxBtns[i].setBackground(round(GFX[i].equals(selGfx[0]) ? C_ACCENT : C_LINE, 8, 0));
+            gfxBtns[i].setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    selGfx[0] = GFX[k];
+                    for (int j = 0; j < GFX.length; j++) gfxBtns[j].setBackground(round(j == k ? C_ACCENT : C_LINE, 8, 0));
+                }
+            });
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+            lp.setMargins(0, 0, dp(5), 0);
+            gfxRow.addView(gfxBtns[i], lp);
+        }
+        box.addView(gfxRow);
+
+        final CheckBox fpsCb = new CheckBox(this);
+        fpsCb.setText(t("fps"));
+        fpsCb.setTextColor(C_TEXT);
+        fpsCb.setChecked(p.getBoolean("fps", false));
+        box.addView(fpsCb);
+
         new AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog)
                 .setTitle("⚙ " + t("settings"))
                 .setView(sv)
@@ -566,7 +628,9 @@ public class MainActivity extends Activity {
                     @Override
                     public void onClick(android.content.DialogInterface d, int w) {
                         boolean langChanged = !selLang[0].equals(lang);
-                        p.edit().putString("lang", selLang[0]).putFloat("sens", selSens[0])
+                        p.edit().putString("nick", nickEd.getText().toString().trim())
+                                .putString("gfx", selGfx[0]).putBoolean("fps", fpsCb.isChecked())
+                                .putString("lang", selLang[0]).putFloat("sens", selSens[0])
                                 .putString("xsize", selSize[0]).putInt("xcolor", selColor[0]).apply();
                         lang = selLang[0];
                         writeSettings();
