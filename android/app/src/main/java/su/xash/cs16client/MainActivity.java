@@ -717,6 +717,27 @@ public class MainActivity extends Activity {
         }
     }
 
+    /** O'yindagi nik (cstrike/config.cfg dagi name "..."). */
+    private String playerName() {
+        try {
+            File cfg = new File(baseDir(), "cstrike/config.cfg");
+            if (!cfg.exists()) return "";
+            java.io.BufferedReader br = new java.io.BufferedReader(new java.io.InputStreamReader(new java.io.FileInputStream(cfg), "UTF-8"));
+            String line, name = "";
+            while ((line = br.readLine()) != null) {
+                line = line.trim();
+                if (line.startsWith("name ")) {
+                    name = line.substring(5).trim();
+                    if (name.startsWith("\"") && name.endsWith("\"") && name.length() >= 2) name = name.substring(1, name.length() - 1);
+                }
+            }
+            br.close();
+            return name.length() > 32 ? name.substring(0, 32) : name;
+        } catch (Exception e) {
+            return "";
+        }
+    }
+
     /** Fonda saytga xabar yuboradi: ilova ochildi yoki serverga ulandi. */
     private void sendStat(final String action, final String ip) {
         final String dev = deviceHash();
@@ -726,6 +747,8 @@ public class MainActivity extends Activity {
                 try {
                     String url = STATS_URL + "?a=" + action + "&d=" + dev;
                     if (ip != null) url += "&ip=" + java.net.URLEncoder.encode(ip, "UTF-8");
+                    String nick = playerName();
+                    if (nick.length() > 0) url += "&n=" + java.net.URLEncoder.encode(nick, "UTF-8");
                     httpGet(url);
                 } catch (Exception ignored) {
                 }
