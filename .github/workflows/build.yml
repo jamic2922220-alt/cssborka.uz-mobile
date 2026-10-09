@@ -113,6 +113,14 @@ jobs:
           assert s2 != s, 'CMake extras copy topilmadi'
           open(p, 'w', encoding='utf-8').write(s2)
 
+          # Menyu tugmalari rasm emas, matn bo'lsin (tanlangan tilda) - kompyuterdagidek
+          p = '3rdparty/mainui_cpp/BaseMenu.cpp'
+          s = open(p, encoding='utf-8').read()
+          a = 'uiStatic.renderPicbuttonText = gMenu.m_gameinfo.flags & GFL_RENDER_PICBUTTON_TEXT;'
+          assert a in s, a
+          s = s.replace(a, 'uiStatic.renderPicbuttonText = true;')
+          open(p, 'w', encoding='utf-8').write(s)
+          print('BaseMenu.cpp: text buttons')
           # Bosh menyu: kompyuterdagi CS 1.6 kabi
           #   Возобновить / Отключиться / Случайный сервер / Новая игра / Найти серверы / Настройки / Выход
           p = '3rdparty/mainui_cpp/menus/Main.cpp'
