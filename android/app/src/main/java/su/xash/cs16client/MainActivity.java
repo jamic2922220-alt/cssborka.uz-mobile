@@ -144,6 +144,7 @@ public class MainActivity extends Activity {
                 {"pl_none", "Hozir serverda hech kim yo'q", "Сейчас на сервере никого нет", "Nobody is playing right now"},
                 {"pl_err", "Server javob bermadi", "Сервер не ответил", "Server did not respond"},
                 {"close", "Yopish", "Закрыть", "Close"},
+                {"updperm", "Ruxsat bering: \"Shu manbadan o'rnatish\" ni yoqing, keyin qaytib YANGILASH ni bosing", "Разрешите установку из этого источника, затем вернитесь и нажмите ОБНОВИТЬ", "Allow installs from this source, then come back and tap UPDATE"},
                 {"settings", "Sozlamalar", "Настройки", "Settings"},
                 {"lang", "Til", "Язык", "Language"},
                 {"sens", "Sichqoncha / ekran sezgirligi", "Чувствительность", "Sensitivity"},
@@ -280,6 +281,7 @@ public class MainActivity extends Activity {
 
         setContentView(root);
         loadConfig();
+        registerInstallReceiver();
         sendStat("open", null);
     }
 
@@ -1332,16 +1334,162 @@ public class MainActivity extends Activity {
         lp.setMargins(0, dp(4), 0, dp(8));
         card.setLayoutParams(lp);
         card.addView(text(t("upd"), 14, C_TEXT, true), new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        if (updating) {
+            updText = text(t("dling") + "0%", 13, C_GOLD, true);
+            card.addView(updText);
+            return card;
+        }
         Button b = button(t("updb"), 0xFF22A355);
         b.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                toastLike(t("updhint"));
-                openUrl(apkUrl);
+                startSelfUpdate();
             }
         });
         card.addView(b);
         return card;
+    }
+
+    // ---------------- ilova ichida yangilash (PackageInstaller) ----------------
+    private volatile boolean updating = false;
+    private TextView updText;
+    private static final String ACTION_INSTALL = "uz.boosttop.cs16.INSTALL_STATUS";
+    private android.content.BroadcastReceiver installReceiver;
+
+    private void startSelfUpdate() {
+        if (updating) return;
+        // Android 8+: "noma'lum manbalardan o'rnatish" ruxsati shu ilova uchun kerak
+        if (Build.VERSION.SDK_INT >= 26 && !getPackageManager().canRequestPackageInstalls()) {
+            toastLike(t("updperm"));
+            try {
+                startActivity(new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:" + getPackageName())));
+            } catch (Exception e) {
+                openUrl(apkUrl);
+            }
+            return;
+        }
+        updating = true;
+        render();
+        final String url = apkUrl;
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                String err = null;
+                HttpURLConnection c = null;
+                android.content.pm.PackageInstaller.Session session = null;
+                try {
+                    c = (HttpURLConnection) new URL(url).openConnection();
+                    c.setConnectTimeout(15000);
+                    c.setReadTimeout(30000);
+                    c.setInstanceFollowRedirects(true);
+                    // GitHub boshqa domenga (https) yo'naltiradi - qo'lda kuzatamiz
+                    for (int i = 0; i < 5; i++) {
+                        int code = c.getResponseCode();
+                        if (code >= 300 && code < 400) {
+                            String loc = c.getHeaderField("Location");
+                            c.disconnect();
+                            c = (HttpURLConnection) new URL(new URL(url), loc).openConnection();
+                            c.setConnectTimeout(15000);
+                            c.setReadTimeout(30000);
+                            continue;
+                        }
+                        break;
+                    }
+                    if (c.getResponseCode() != 200) throw new Exception("HTTP " + c.getResponseCode());
+                    final long total = Math.max(1, c.getContentLength());
+                    android.content.pm.PackageInstaller pi = getPackageManager().getPackageInstaller();
+                    android.content.pm.PackageInstaller.SessionParams params =
+                            new android.content.pm.PackageInstaller.SessionParams(android.content.pm.PackageInstaller.SessionParams.MODE_FULL_INSTALL);
+                    params.setAppPackageName(getPackageName());
+                    int id = pi.createSession(params);
+                    session = pi.openSession(id);
+                    OutputStream out = session.openWrite("base.apk", 0, c.getContentLength() > 0 ? c.getContentLength() : -1);
+                    InputStream in = c.getInputStream();
+                    byte[] buf = new byte[65536];
+                    long done = 0, lastUi = 0;
+                    int n;
+                    while ((n = in.read(buf)) > 0) {
+                        out.write(buf, 0, n);
+                        done += n;
+                        long now = System.currentTimeMillis();
+                        if (now - lastUi > 300) {
+                            lastUi = now;
+                            final int pct = (int) Math.min(100, done * 100 / total);
+                            runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    if (updText != null) updText.setText(t("dling") + pct + "%");
+                                }
+                            });
+                        }
+                    }
+                    session.fsync(out);
+                    out.close();
+                    in.close();
+                    Intent cb = new Intent(ACTION_INSTALL).setPackage(getPackageName());
+                    int fl = Build.VERSION.SDK_INT >= 31 ? 0x02000000 /* FLAG_MUTABLE */ : 0;
+                    android.app.PendingIntent pIntent = android.app.PendingIntent.getBroadcast(MainActivity.this, id, cb,
+                            android.app.PendingIntent.FLAG_UPDATE_CURRENT | fl);
+                    session.commit(pIntent.getIntentSender());
+                    session.close();
+                    session = null;
+                } catch (Exception e) {
+                    err = e.getClass().getSimpleName() + ": " + e.getMessage();
+                    if (session != null) try { session.abandon(); } catch (Exception ignored) { }
+                } finally {
+                    if (c != null) c.disconnect();
+                }
+                final String fe = err;
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (fe != null) {
+                            updating = false;
+                            render();
+                            toastLike(t("dlerr") + fe);
+                            openUrl(apkUrl); // zaxira: brauzer orqali
+                        }
+                    }
+                });
+            }
+        }).start();
+    }
+
+    /** O'rnatish holati: tizim tasdiq oynasini so'rasa - ochamiz. */
+    private void registerInstallReceiver() {
+        installReceiver = new android.content.BroadcastReceiver() {
+            @Override
+            public void onReceive(Context ctx, Intent intent) {
+                int st = intent.getIntExtra(android.content.pm.PackageInstaller.EXTRA_STATUS, -999);
+                if (st == android.content.pm.PackageInstaller.STATUS_PENDING_USER_ACTION) {
+                    Intent confirm = intent.getParcelableExtra(Intent.EXTRA_INTENT);
+                    if (confirm != null) {
+                        confirm.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                        try {
+                            startActivity(confirm);
+                        } catch (Exception ignored) {
+                        }
+                    }
+                } else if (st != android.content.pm.PackageInstaller.STATUS_SUCCESS) {
+                    updating = false;
+                    render();
+                    String msg = intent.getStringExtra(android.content.pm.PackageInstaller.EXTRA_STATUS_MESSAGE);
+                    toastLike(t("dlerr") + (msg == null ? st : msg));
+                }
+            }
+        };
+        android.content.IntentFilter f = new android.content.IntentFilter(ACTION_INSTALL);
+        if (Build.VERSION.SDK_INT >= 33) registerReceiver(installReceiver, f, 4 /* RECEIVER_NOT_EXPORTED */);
+        else registerReceiver(installReceiver, f);
+    }
+
+    @Override
+    protected void onDestroy() {
+        try {
+            if (installReceiver != null) unregisterReceiver(installReceiver);
+        } catch (Exception ignored) {
+        }
+        super.onDestroy();
     }
 
     private View setupCard() {
