@@ -93,6 +93,10 @@ public class MainActivity extends Activity {
     private ProgressBar dlBar;
     private TextView dlText;
     private JSONObject lastData;
+    // ping: telefondan har bir serverga UDP so'rov (A2S_INFO) javob vaqti, ms
+    private final Map<String, Integer> pings = new java.util.concurrent.ConcurrentHashMap<String, Integer>();
+    private final Map<String, TextView> pingViews = new HashMap<String, TextView>();
+    private volatile boolean pinging = false;
 
     // ---------------- matnlar ----------------
     private String t(String key) {
@@ -132,6 +136,14 @@ public class MainActivity extends Activity {
                 {"gfx_mid", "O'rta", "Средняя", "Medium"},
                 {"gfx_low", "Past (tez)", "Низкая (быстро)", "Low (fast)"},
                 {"fps", "FPS ni ko'rsatish", "Показывать FPS", "Show FPS"},
+                {"favs", "⭐ Mening serverlarim", "⭐ Мои серверы", "⭐ My servers"},
+                {"players", "O'yinchilar", "Игроки", "Players"},
+                {"pl_nick", "Nik", "Ник", "Name"},
+                {"pl_score", "Frag", "Фраги", "Score"},
+                {"pl_time", "Vaqt", "Время", "Time"},
+                {"pl_none", "Hozir serverda hech kim yo'q", "Сейчас на сервере никого нет", "Nobody is playing right now"},
+                {"pl_err", "Server javob bermadi", "Сервер не ответил", "Server did not respond"},
+                {"close", "Yopish", "Закрыть", "Close"},
                 {"settings", "Sozlamalar", "Настройки", "Settings"},
                 {"lang", "Til", "Язык", "Language"},
                 {"sens", "Sichqoncha / ekran sezgirligi", "Чувствительность", "Sensitivity"},
@@ -319,11 +331,48 @@ public class MainActivity extends Activity {
             FileOutputStream ms = new FileOutputStream(new File(dir, "boosttop_ms.cfg"));
             ms.write(("addmasterstatic \"" + MASTER_URL + "\"\n").getBytes("UTF-8"));
             ms.close();
+            // O'yin menyusidagi "Случайный сервер" tugmasi uchun: ro'yxatimizdan tasodifiy onlayn server
+            java.util.List<String> online = new java.util.ArrayList<String>();
+            for (int i = 0; i < sections.length(); i++) {
+                JSONObject s = sections.optJSONObject(i);
+                JSONArray list = s == null ? null : s.optJSONArray("servers");
+                if (list != null) for (int k = 0; k < list.length(); k++) {
+                    JSONObject sv = list.optJSONObject(k);
+                    if (sv != null && sv.optBoolean("online", false)) online.add(sv.optString("ip"));
+                }
+            }
+            String rnd = online.isEmpty() ? "" : online.get(new java.util.Random().nextInt(online.size()));
+            FileOutputStream rf = new FileOutputStream(new File(dir, "boosttop_random.cfg"));
+            rf.write((rnd.length() > 0 ? "connect " + rnd + "\n" : "echo no servers\n").getBytes("UTF-8"));
+            rf.close();
+            // Menyu tugmalari kompyuterdagidek matn ko'rinishida (tanlangan tilda)
+            File lib = new File(dir, "liblist.gam");
+            if (lib.exists()) {
+                String txt = new String(readAll(lib), "UTF-8");
+                if (!txt.contains("render_picbutton_text")) {
+                    FileOutputStream lo = new FileOutputStream(lib, true);
+                    lo.write("\nrender_picbutton_text \"1\"\n".getBytes("UTF-8"));
+                    lo.close();
+                }
+            }
             if (sb.length() == 0) return;
             FileOutputStream fo = new FileOutputStream(new File(dir, "favorite_servers.lst"));
             fo.write(sb.toString().getBytes("UTF-8"));
             fo.close();
         } catch (Exception ignored) {
+        }
+    }
+
+    private static byte[] readAll(File f) throws java.io.IOException {
+        java.io.FileInputStream in = new java.io.FileInputStream(f);
+        try {
+            ByteArrayOutputStream bo = new ByteArrayOutputStream();
+            byte[] buf = new byte[8192];
+            int n;
+            while ((n = in.read(buf)) > 0) bo.write(buf, 0, n);
+            return bo.toByteArray();
+        } finally {
+            in.close();
         }
     }
 
@@ -869,6 +918,273 @@ public class MainActivity extends Activity {
         }).start();
     }
 
+    // ---------------- sevimli serverlar (telefonda saqlanadi) ----------------
+    private JSONObject favs() {
+        try {
+            return new JSONObject(prefs().getString("favs", "{}"));
+        } catch (Exception e) {
+            return new JSONObject();
+        }
+    }
+
+    private boolean isFav(String ip) {
+        return favs().has(ip);
+    }
+
+    private void toggleFav(String ip, String name) {
+        try {
+            JSONObject f = favs();
+            if (f.has(ip)) f.remove(ip); else f.put(ip, name);
+            prefs().edit().putString("favs", f.toString()).apply();
+        } catch (Exception ignored) {
+        }
+        render();
+    }
+
+    /** Sevimlilar bo'limi uchun: saytdagi jonli ma'lumot, bo'lmasa saqlangan nom. */
+    private JSONObject findServer(String ip, String savedName) {
+        JSONArray sections = lastData == null ? null : lastData.optJSONArray("sections");
+        if (sections != null) for (int i = 0; i < sections.length(); i++) {
+            JSONObject s = sections.optJSONObject(i);
+            JSONArray list = s == null ? null : s.optJSONArray("servers");
+            if (list != null) for (int k = 0; k < list.length(); k++) {
+                JSONObject sv = list.optJSONObject(k);
+                if (sv != null && ip.equals(sv.optString("ip"))) return sv;
+            }
+        }
+        JSONObject o = new JSONObject();
+        try {
+            o.put("ip", ip);
+            o.put("name", savedName);
+            o.put("online", true);
+        } catch (Exception ignored) {
+        }
+        return o;
+    }
+
+    // ---------------- server ichidagi o'yinchilar (A2S_PLAYER) ----------------
+    private static class PlayerInfo {
+        String name;
+        int score;
+        float time;
+    }
+
+    private static java.util.List<PlayerInfo> queryPlayers(String addr) throws Exception {
+        int c = addr.lastIndexOf(':');
+        java.net.InetAddress host = java.net.InetAddress.getByName(addr.substring(0, c));
+        int port = Integer.parseInt(addr.substring(c + 1));
+        java.net.DatagramSocket sock = new java.net.DatagramSocket();
+        try {
+            sock.setSoTimeout(1500);
+            byte[] req = {(byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, 0x55, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF};
+            byte[] buf = new byte[4096];
+            java.net.DatagramPacket in = null;
+            for (int attempt = 0; attempt < 4; attempt++) {
+                sock.send(new java.net.DatagramPacket(req, req.length, host, port));
+                in = new java.net.DatagramPacket(buf, buf.length);
+                try {
+                    sock.receive(in);
+                } catch (java.net.SocketTimeoutException te) {
+                    in = null;
+                    continue;
+                }
+                if (in.getLength() >= 9 && buf[4] == 0x41) { // 'A' - challenge
+                    req = new byte[]{(byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, 0x55, buf[5], buf[6], buf[7], buf[8]};
+                    in = null;
+                    continue;
+                }
+                break;
+            }
+            if (in == null || in.getLength() < 6 || buf[4] != 0x44) throw new Exception("no answer"); // 'D'
+            java.nio.ByteBuffer bb = java.nio.ByteBuffer.wrap(buf, 0, in.getLength()).order(java.nio.ByteOrder.LITTLE_ENDIAN);
+            bb.position(5);
+            int count = bb.get() & 0xff;
+            java.util.List<PlayerInfo> out = new java.util.ArrayList<PlayerInfo>();
+            for (int i = 0; i < count && bb.remaining() > 9; i++) {
+                bb.get(); // index
+                java.io.ByteArrayOutputStream nb = new java.io.ByteArrayOutputStream();
+                byte b;
+                while (bb.hasRemaining() && (b = bb.get()) != 0) nb.write(b);
+                if (bb.remaining() < 8) break;
+                PlayerInfo p = new PlayerInfo();
+                byte[] raw = nb.toByteArray();
+                String nm = new String(raw, "UTF-8");
+                if (nm.indexOf('�') >= 0) nm = new String(raw, "windows-1251");
+                p.name = nm;
+                p.score = bb.getInt();
+                p.time = bb.getFloat();
+                out.add(p);
+            }
+            java.util.Collections.sort(out, new java.util.Comparator<PlayerInfo>() {
+                @Override
+                public int compare(PlayerInfo a, PlayerInfo b) {
+                    return b.score - a.score;
+                }
+            });
+            return out;
+        } finally {
+            sock.close();
+        }
+    }
+
+    private void showPlayers(final String ip, final String serverName) {
+        final LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(dp(16), dp(8), dp(16), dp(8));
+        box.setBackgroundColor(C_CARD);
+        final TextView st = text(t("loading").replace("Serverlar", "O'yinchilar"), 13, C_MUTED, false);
+        box.addView(st);
+        ScrollView sv = new ScrollView(this);
+        sv.addView(box);
+        new AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog)
+                .setTitle(serverName)
+                .setView(sv)
+                .setPositiveButton(t("join"), new android.content.DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(android.content.DialogInterface d, int w) {
+                        launchGame(ip);
+                    }
+                })
+                .setNegativeButton(t("close"), null)
+                .show();
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                java.util.List<PlayerInfo> list = null;
+                try {
+                    list = queryPlayers(ip);
+                } catch (Exception ignored) {
+                }
+                final java.util.List<PlayerInfo> res = list;
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        box.removeAllViews();
+                        if (res == null) {
+                            box.addView(text(t("pl_err"), 13, C_MUTED, false));
+                            return;
+                        }
+                        if (res.isEmpty()) {
+                            box.addView(text(t("pl_none"), 13, C_MUTED, false));
+                            return;
+                        }
+                        box.addView(playerLine(t("pl_nick"), t("pl_score"), t("pl_time"), true));
+                        for (PlayerInfo p : res) {
+                            int m = (int) (p.time / 60);
+                            String tm = (m / 60) + ":" + String.format(Locale.US, "%02d", m % 60);
+                            box.addView(playerLine(p.name, String.valueOf(p.score), tm, false));
+                        }
+                    }
+                });
+            }
+        }).start();
+    }
+
+    private View playerLine(String a, String b, String c, boolean head) {
+        LinearLayout r = new LinearLayout(this);
+        r.setOrientation(LinearLayout.HORIZONTAL);
+        r.setPadding(0, dp(5), 0, dp(5));
+        int col = head ? C_GOLD : C_TEXT;
+        TextView n = text(a, 13, col, head);
+        n.setSingleLine(true);
+        n.setEllipsize(TextUtils.TruncateAt.END);
+        r.addView(n, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        TextView s = text(b, 13, col, head);
+        s.setGravity(Gravity.END);
+        r.addView(s, new LinearLayout.LayoutParams(dp(56), ViewGroup.LayoutParams.WRAP_CONTENT));
+        TextView t2 = text(c, 13, head ? C_GOLD : C_MUTED, head);
+        t2.setGravity(Gravity.END);
+        r.addView(t2, new LinearLayout.LayoutParams(dp(56), ViewGroup.LayoutParams.WRAP_CONTENT));
+        return r;
+    }
+
+    private void showPing(String ip, TextView pv) {
+        Integer ms = pings.get(ip);
+        if (pv == null) return;
+        if (ms == null) {
+            pv.setText("… ms");
+            pv.setBackground(round(C_LINE, 4, 0));
+        } else if (ms < 0) {
+            pv.setText("— ms");
+            pv.setBackground(round(C_OFF, 4, 0));
+        } else {
+            pv.setText(ms + " ms");
+            pv.setBackground(round(ms < 80 ? 0xFF22A355 : ms < 150 ? 0xFFC9A100 : 0xFFD9443A, 4, 0));
+        }
+    }
+
+    /** Barcha serverlarga ping o'lchaydi (fon oqimida, bir vaqtda). */
+    private void measurePings() {
+        if (pinging || lastData == null) return;
+        final java.util.LinkedHashSet<String> ips = new java.util.LinkedHashSet<String>();
+        JSONArray sections = lastData.optJSONArray("sections");
+        if (sections != null) for (int i = 0; i < sections.length(); i++) {
+            JSONObject s = sections.optJSONObject(i);
+            JSONArray list = s == null ? null : s.optJSONArray("servers");
+            if (list != null) for (int k = 0; k < list.length(); k++) {
+                JSONObject sv = list.optJSONObject(k);
+                if (sv != null && sv.optBoolean("online", false)) ips.add(sv.optString("ip"));
+            }
+        }
+        if (ips.isEmpty()) return;
+        pinging = true;
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                java.util.List<Thread> ts = new java.util.ArrayList<Thread>();
+                for (final String ip : ips) {
+                    Thread t = new Thread(new Runnable() {
+                        @Override
+                        public void run() {
+                            final int ms = pingServer(ip);
+                            pings.put(ip, ms);
+                            runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    showPing(ip, pingViews.get(ip));
+                                }
+                            });
+                        }
+                    });
+                    ts.add(t);
+                    t.start();
+                }
+                for (Thread t : ts) try { t.join(3000); } catch (InterruptedException ignored) { }
+                pinging = false;
+            }
+        }).start();
+    }
+
+    /** GoldSrc A2S_INFO so'rovi; eng yaxshi javob vaqti (3 urinish), javob bo'lmasa -1. */
+    private static int pingServer(String addr) {
+        java.net.DatagramSocket sock = null;
+        try {
+            int c = addr.lastIndexOf(':');
+            java.net.InetAddress host = java.net.InetAddress.getByName(addr.substring(0, c));
+            int port = Integer.parseInt(addr.substring(c + 1));
+            byte[] q = "\u00ff\u00ff\u00ff\u00ffTSource Engine Query\u0000".getBytes("ISO-8859-1");
+            sock = new java.net.DatagramSocket();
+            sock.setSoTimeout(1000);
+            int best = -1;
+            byte[] buf = new byte[1400];
+            for (int i = 0; i < 3; i++) {
+                long t0 = System.nanoTime();
+                sock.send(new java.net.DatagramPacket(q, q.length, host, port));
+                try {
+                    sock.receive(new java.net.DatagramPacket(buf, buf.length));
+                    int ms = (int) ((System.nanoTime() - t0) / 1000000L);
+                    if (best < 0 || ms < best) best = ms;
+                } catch (java.net.SocketTimeoutException ignored) {
+                }
+            }
+            return best;
+        } catch (Exception e) {
+            return -1;
+        } finally {
+            if (sock != null) sock.close();
+        }
+    }
+
     private void loadServers() {
         if (status != null) status.setText(t("loading"));
         new Thread(new Runnable() {
@@ -885,6 +1201,10 @@ public class MainActivity extends Activity {
                     public void run() {
                         if (d != null) lastData = d;
                         render();
+                        if (d != null) {
+                            pings.clear();
+                            measurePings();
+                        }
                         if (d == null && status != null) status.setText(t("neterr"));
                     }
                 });
@@ -937,6 +1257,7 @@ public class MainActivity extends Activity {
     private void render() {
         if (content == null) return;
         content.removeAllViews();
+        pingViews.clear();
         dlBar = null;
         dlText = null;
 
@@ -954,6 +1275,17 @@ public class MainActivity extends Activity {
         JSONArray sections = lastData.optJSONArray("sections");
         String flagBase = lastData.optString("flag_url", "http://mmb.boost-top.com/flag.php?c=");
         int shown = 0;
+        JSONObject fv = favs();
+        if (fv.length() > 0) {
+            content.addView(sectionHeader(t("favs"), "fav"));
+            java.util.Iterator<String> it = fv.keys();
+            int r = 1;
+            while (it.hasNext()) {
+                String fip = it.next();
+                content.addView(serverRow(findServer(fip, fv.optString(fip, fip)), r++, flagBase));
+                shown++;
+            }
+        }
         if (sections != null) {
             for (int i = 0; i < sections.length(); i++) {
                 JSONObject s = sections.optJSONObject(i);
@@ -1102,6 +1434,16 @@ public class MainActivity extends Activity {
         name.setSingleLine(true);
         name.setEllipsize(TextUtils.TruncateAt.END);
         nameLine.addView(name, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        final String nmFinal = sv.optString("name", ip);
+        final TextView star = text(isFav(ip) ? "★" : "☆", 20, isFav(ip) ? C_GOLD : C_MUTED, true);
+        star.setPadding(dp(8), 0, dp(4), 0);
+        star.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                toggleFav(ip, nmFinal);
+            }
+        });
+        nameLine.addView(star);
         info.addView(nameLine);
 
         LinearLayout meta = new LinearLayout(this);
@@ -1113,6 +1455,12 @@ public class MainActivity extends Activity {
             meta.addView(pill(sv.optInt("players", 0) + "/" + sv.optInt("max", 0), C_PL, Color.WHITE));
         } else {
             meta.addView(pill(t("offline"), C_OFF, Color.WHITE));
+        }
+        if (online) {
+            TextView pv = pill("…", C_LINE, Color.WHITE);
+            pingViews.put(ip, pv);
+            showPing(ip, pv);
+            meta.addView(pv);
         }
         TextView ipv = text(ip, 11, C_MUTED, false);
         ipv.setSingleLine(true);
@@ -1131,7 +1479,7 @@ public class MainActivity extends Activity {
         row.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                launchGame(ip);
+                showPlayers(ip, nmFinal);
             }
         });
         return row;
