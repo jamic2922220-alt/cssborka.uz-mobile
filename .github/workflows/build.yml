@@ -113,13 +113,33 @@ jobs:
           assert s2 != s, 'CMake extras copy topilmadi'
           open(p, 'w', encoding='utf-8').write(s2)
 
-          # Bosh menyu: kompyuter versiyasidagidek (Hazard course, Load game, Readme, Previews, Custom game yo'q)
+          # Bosh menyu: kompyuterdagi CS 1.6 kabi
+          #   Возобновить / Отключиться / Случайный сервер / Новая игра / Найти серверы / Настройки / Выход
           p = '3rdparty/mainui_cpp/menus/Main.cpp'
           s = open(p, encoding='utf-8').read()
-          for item in ['readme', 'previews', 'saveRestore', 'hazardCourse', 'customGame']:
-              a = 'AddItem( %s );' % item
+          def must(a, b, cnt=None):
+              global s
               assert a in s, a
-              s = s.replace(a, ';')
+              s = s.replace(a, b) if cnt is None else s.replace(a, b, cnt)
+          for item in ['previews', 'saveRestore', 'hazardCourse', 'customGame']:
+              must('AddItem( %s );' % item, ';')
+          # "View Readme" tugmasi -> "Случайный сервер" (ilova yozgan boosttop_random.cfg ni ishga tushiradi)
+          s = re.sub(r'readme\.SetNameAndStatus\([^;]*\);',
+              lambda m: '''{ const char *bt_l = EngFuncs::GetCvarString( "ui_language" ); const char *bt_rs = "Random server";
+          		if( bt_l && !strcmp( bt_l, "russian" )) bt_rs = "Случайный сервер";
+          		else if( bt_l && !strcmp( bt_l, "uzbek" )) bt_rs = "Tasodifiy server";
+          		readme.SetNameAndStatus( bt_rs, NULL ); }
+          	readme.onReleased.SetCommand( 0, "exec boosttop_random.cfg\\n" );''', s, count=1)
+          must('readme.SetPicture( PC_VIEW_README );', '')
+          # "Новая игра" -> server yaratish (botlar bilan), kompyuterdagidek
+          must('newGame.onReleased = UI_NewGame_Menu;', 'newGame.onReleased = UI_CreateGame_Menu;')
+          must('newGame.SetGrayed( true );', ';')
+          must('newGame.SetVisibility( false );', 'newGame.SetVisibility( true );')
+          # "Multiplayer" -> "Найти серверы" (to'g'ridan-to'g'ri server ro'yxati)
+          s2 = re.sub(r'multiPlayer\.SetNameAndStatus\(\s*L\(\s*"GameUI_Multiplayer"\s*\)',
+                      'multiPlayer.SetNameAndStatus( L( "GameUI_GameMenu_FindServers" )', s)
+          print('multiplayer label ->', 'find servers' if s2 != s else 'NOT FOUND'); s = s2
+          must('multiPlayer.onReleased = UI_MultiPlayer_Menu;', 'multiPlayer.onReleased = UI_InternetGames_Menu;')
           i = s.index('\tpreviews.SetCoord( hoffset, previews_voffset );')
           j = s.index("\t// now figure out what's visible")
           s = s[:i] + '''	bool single = gpGlobals->maxClients < 2;
@@ -127,7 +147,8 @@ jobs:
           	quit.SetCoord( hoffset, yoffset ); yoffset -= ygap;
           	configuration.SetCoord( hoffset, yoffset ); yoffset -= ygap;
           	multiPlayer.SetCoord( hoffset, yoffset ); yoffset -= ygap;
-          	newGame.SetCoord( hoffset, yoffset );
+          	newGame.SetCoord( hoffset, yoffset ); yoffset -= ygap * 2;
+          	readme.SetCoord( hoffset, yoffset ); yoffset -= ygap * 2;
           	if( connected )
           	{
           		if( !single ) { disconnect.SetCoord( hoffset, yoffset ); yoffset -= ygap; }
@@ -136,10 +157,6 @@ jobs:
           	console.SetCoord( hoffset, yoffset );
 
           ''' + s[j:]
-          # "Multiplayer" o'rniga kompyuterdagidek "Найти серверы" - to'g'ridan-to'g'ri internet serverlar ro'yxati
-          s2 = re.sub(r'multiPlayer\.SetNameAndStatus\(\s*L\(\s*"GameUI_Multiplayer"\s*\)',
-                      'multiPlayer.SetNameAndStatus( L( "GameUI_GameMenu_FindServers" )', s)
-          print('multiplayer label ->', 'find servers' if s2 != s else 'NOT FOUND'); s = s2
           open(p, 'w', encoding='utf-8').write(s)
           print('Main.cpp patched')
           PY
