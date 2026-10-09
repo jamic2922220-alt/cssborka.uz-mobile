@@ -72,6 +72,8 @@ public class MainActivity extends Activity {
     // avtomatik yangilanish: saytdagi mobile.json -> apk_build / apk_url
     private volatile int apkBuild = 0;
     private volatile String apkUrl = "";
+    // yangiliklar: saytdagi mobile.json -> "news"
+    private volatile JSONArray news = null;
 
     // ---------------- ranglar ----------------
     private static final int C_BG = 0xFF0A1426;
@@ -908,6 +910,10 @@ public class MainActivity extends Activity {
                     dataSizeMb = j.optInt("data_size_mb", dataSizeMb);
                     apkBuild = j.optInt("apk_build", 0);
                     apkUrl = j.optString("apk_url", "");
+                    Object nw = j.opt("news");
+                    if (nw instanceof JSONArray) news = (JSONArray) nw;
+                    else if (nw instanceof JSONObject) news = new JSONArray().put(nw);
+                    else news = null;
                     runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
@@ -1265,6 +1271,7 @@ public class MainActivity extends Activity {
 
         if (apkBuild > myBuild() && apkUrl.length() > 0) content.addView(updateCard());
         if (!setupDone() || downloading) content.addView(setupCard());
+        addNews();
 
         status = text("", 13, C_MUTED, false);
         status.setPadding(dp(4), dp(10), dp(4), dp(4));
@@ -1309,6 +1316,70 @@ public class MainActivity extends Activity {
         }
         status.setText(shown == 0 ? t("empty") : "");
         status.setVisibility(shown == 0 ? View.VISIBLE : View.GONE);
+    }
+
+    // ---------------- yangiliklar qatori ----------------
+    private void addNews() {
+        JSONArray arr = news;
+        if (arr == null) return;
+        String hidden = "," + prefs().getString("news_hidden", "") + ",";
+        for (int i = 0; i < arr.length(); i++) {
+            JSONObject n = arr.optJSONObject(i);
+            if (n == null) continue;
+            String id = n.optString("id", "");
+            if (id.length() > 0 && hidden.contains("," + id + ",")) continue;
+            String msg = n.optString(lang, "");
+            if (msg.length() == 0) msg = n.optString("ru", n.optString("uz", n.optString("text", "")));
+            if (msg.length() == 0) continue;
+            content.addView(newsCard(n, id, msg));
+        }
+    }
+
+    private View newsCard(JSONObject n, final String id, String msg) {
+        int col = C_ACCENT;
+        try {
+            String c = n.optString("color", "");
+            if (c.length() > 0) col = android.graphics.Color.parseColor(c);
+        } catch (Exception ignored) {
+        }
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.HORIZONTAL);
+        card.setGravity(Gravity.CENTER_VERTICAL);
+        card.setPadding(dp(14), dp(10), dp(6), dp(10));
+        card.setBackground(round(C_CARD, 12, col));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        lp.setMargins(0, dp(4), 0, dp(6));
+        card.setLayoutParams(lp);
+        TextView tv = text(msg, 14, C_TEXT, true);
+        card.addView(tv, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        final String server = n.optString("server", "");
+        final String url = n.optString("url", "");
+        if (server.length() > 0 || url.length() > 0) {
+            TextView go = text(server.length() > 0 ? t("join") : "›", server.length() > 0 ? 12 : 22, col, true);
+            go.setPadding(dp(8), 0, dp(6), 0);
+            card.addView(go);
+            card.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    if (server.length() > 0) launchGame(server);
+                    else openUrl(url);
+                }
+            });
+        }
+        if (id.length() > 0 && !n.optBoolean("pin", false)) {
+            TextView x = text("×", 22, C_MUTED, false);
+            x.setPadding(dp(10), 0, dp(8), 0);
+            x.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    String h = prefs().getString("news_hidden", "");
+                    prefs().edit().putString("news_hidden", h.length() == 0 ? id : h + "," + id).apply();
+                    render();
+                }
+            });
+            card.addView(x);
+        }
+        return card;
     }
 
     /** Ilovaning build raqami (CI assets/bt_build.txt ga yozadi). */
