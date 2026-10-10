@@ -147,6 +147,7 @@ public class MainActivity extends Activity {
                 {"pl_err", "Server javob bermadi", "Сервер не ответил", "Server did not respond"},
                 {"close", "Yopish", "Закрыть", "Close"},
                 {"updperm", "Ruxsat bering: \"Shu manbadan o'rnatish\" ni yoqing, keyin qaytib YANGILASH ni bosing", "Разрешите установку из этого источника, затем вернитесь и нажмите ОБНОВИТЬ", "Allow installs from this source, then come back and tap UPDATE"},
+                {"updinst", "O'rnatilmoqda... Ilova yopilsa - qayta oching, yangi versiya tayyor bo'ladi.", "Устанавливается... Если приложение закроется - откройте его снова, новая версия будет готова.", "Installing... If the app closes, open it again - the new version will be ready."},
                 {"settings", "Sozlamalar", "Настройки", "Settings"},
                 {"lang", "Til", "Язык", "Language"},
                 {"sens", "Sichqoncha / ekran sezgirligi", "Чувствительность", "Sensitivity"},
@@ -1497,6 +1498,13 @@ public class MainActivity extends Activity {
                     session.fsync(out);
                     out.close();
                     in.close();
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            if (updText != null) updText.setText("100%");
+                            toastLike(t("updinst"));
+                        }
+                    });
                     Intent cb = new Intent(ACTION_INSTALL).setPackage(getPackageName());
                     int fl = Build.VERSION.SDK_INT >= 31 ? 0x02000000 /* FLAG_MUTABLE */ : 0;
                     android.app.PendingIntent pIntent = android.app.PendingIntent.getBroadcast(MainActivity.this, id, cb,
