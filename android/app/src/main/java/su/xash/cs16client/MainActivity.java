@@ -160,6 +160,8 @@ public class MainActivity extends Activity {
                 {"xt3", "Juda qalin", "Очень толстый", "Extra thick"},
                 {"xdot", "Markazda nuqta", "Точка в центре", "Center dot"},
                 {"ctrl", "Boshqaruv", "Управление", "Controls"},
+                {"gyro", "Giroskop bilan nishon olish (PRO)", "Прицеливание гироскопом (PRO)", "Gyro aiming (PRO)"},
+                {"gyrosens", "Giroskop sezgirligi", "Чувствительность гироскопа", "Gyro sensitivity"},
                 {"ctrl_pro", "PRO (2 ta o'q tugmasi)", "PRO (2 кнопки огня)", "PRO (2 fire buttons)"},
                 {"ctrl_std", "Standart", "Стандарт", "Standard"},
                 {"auto", "Avto", "Авто", "Auto"},
@@ -473,6 +475,19 @@ public class MainActivity extends Activity {
                     {"xhair_additive", "0"},
                     {"xhair_dynamic_scale", "0"},
                     {"xhair_color", color + " 255"},
+                    // nishon barqaror bo'lishi uchun: ekran chayqalmasin, qurol tez almashsin
+                    {"cl_bob", "0"},
+                    {"cl_bobup", "0"},
+                    {"cl_dynamiccrosshair", "0"},
+                    {"hud_fastswitch", "1"},
+                    // giroskop PRO: titrashni yumshatish, mayda harakatda aniqlik
+                    {"gyro_yaw", String.format(Locale.US, "%.1f", p.getFloat("gyrosens", 2.0f))},
+                    {"gyro_pitch", String.format(Locale.US, "%.1f", p.getFloat("gyrosens", 2.0f))},
+                    {"gyro_roll", "0"},
+                    {"gyro_yaw_deadzone", "0.8"},
+                    {"gyro_pitch_deadzone", "0.8"},
+                    {"gyro_smooth", "0.5"},
+                    {"gyro_soft", "1"},
                     {"cl_showfps", p.getBoolean("fps", false) ? "1" : "0"},
                     {"gl_picmip", "low".equals(p.getString("gfx", "high")) ? "1" : "0"},
                     {"r_dynamic", "high".equals(p.getString("gfx", "high")) ? "1" : "0"},
@@ -490,6 +505,7 @@ public class MainActivity extends Activity {
             if (!dir.exists()) return;
             StringBuilder sb = new StringBuilder();
             for (String[] v : cv) sb.append(v[0]).append(" \"").append(v[1]).append("\"\n");
+            if (p.contains("gyro")) sb.append("gyro_enable \"").append(p.getBoolean("gyro", false) ? "1" : "0").append("\"\n");
             String nick = p.getString("nick", "").replace("\"", "").replace(";", "").trim();
             if (nick.length() > 0) sb.append("name \"").append(nick).append("\"\n");
             // serverdagi bt_mobile plagini telefon o'yinchisini shu belgi orqali taniydi
@@ -510,6 +526,7 @@ public class MainActivity extends Activity {
                     for (String[] v : cv) if (tl.startsWith(v[0] + " ") || tl.equals(v[0])) ours = true;
                     if (p.getString("nick", "").trim().length() > 0 && tl.startsWith("name ")) ours = true;
                     if (tl.startsWith("setinfo _bt")) ours = true;
+                    if (p.contains("gyro") && tl.startsWith("gyro_enable ")) ours = true;
                     if (!ours) out.append(line).append('\n');
                 }
                 br.close();
@@ -741,6 +758,36 @@ public class MainActivity extends Activity {
         }
         box.addView(colorRow);
 
+        // giroskop
+        final CheckBox gyroCb = new CheckBox(this);
+        gyroCb.setText(t("gyro"));
+        gyroCb.setTextColor(C_TEXT);
+        gyroCb.setChecked(p.getBoolean("gyro", false));
+        box.addView(gyroCb);
+        final float[] selGyro = {p.getFloat("gyrosens", 2.0f)};
+        final TextView gyroLabel = text("", 13, C_MUTED, false);
+        gyroLabel.setText(t("gyrosens") + ": " + String.format(Locale.US, "%.1f", selGyro[0]));
+        box.addView(gyroLabel);
+        SeekBar gsb = new SeekBar(this);
+        gsb.setMax(45); // 0.5 .. 5.0
+        gsb.setProgress(Math.round((selGyro[0] - 0.5f) * 10));
+        gsb.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar s, int v, boolean u) {
+                selGyro[0] = 0.5f + v / 10f;
+                gyroLabel.setText(t("gyrosens") + ": " + String.format(Locale.US, "%.1f", selGyro[0]));
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar s) {
+            }
+
+            @Override
+            public void onStopTrackingTouch(SeekBar s) {
+            }
+        });
+        box.addView(gsb);
+
         // boshqaruv
         final String[] LAYS = {"pro", "std"};
         final String[] selLay = {p.getString("touchlay", "pro")};
@@ -811,7 +858,10 @@ public class MainActivity extends Activity {
                                 .putString("lang", selLang[0]).putFloat("sens", selSens[0])
                                 .putString("xsize", selSize[0]).putInt("xcolor", selColor[0])
                                 .putInt("xthick", selThick[0]).putBoolean("xdot", dotCb.isChecked())
-                                .putString("touchlay", selLay[0]).putString("touch_applied", "").apply();
+                                .putString("touchlay", selLay[0])
+                                .putBoolean("gyro", gyroCb.isChecked()).putFloat("gyrosens", selGyro[0]).apply();
+                        if (!selLay[0].equals(p.getString("touch_applied", "")))
+                            p.edit().putString("touch_applied", "").apply();
                         lang = selLang[0];
                         writeSettings();
                         toastLike(t("saved"));
