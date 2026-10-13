@@ -148,6 +148,11 @@ public class MainActivity extends Activity {
                 {"close", "Yopish", "Закрыть", "Close"},
                 {"updperm", "Ruxsat bering: \"Shu manbadan o'rnatish\" ni yoqing, keyin qaytib YANGILASH ni bosing", "Разрешите установку из этого источника, затем вернитесь и нажмите ОБНОВИТЬ", "Allow installs from this source, then come back and tap UPDATE"},
                 {"updinst", "O'rnatilmoqda... Ilova yopilsa - qayta oching, yangi versiya tayyor bo'ladi.", "Устанавливается... Если приложение закроется - откройте его снова, новая версия будет готова.", "Installing... If the app closes, open it again - the new version will be ready."},
+                {"updwarn", "Yangi versiya yuklanadi. Keyin telefonning O'RNATISH oynasi chiqadi: \"Yangilash/O'rnatish\" ni, tugagach \"Ochish\" ni bosing. O'yin fayllari saqlanib qoladi.", "Новая версия скачается. Затем откроется окно УСТАНОВКИ телефона: нажмите \"Обновить/Установить\", а после - \"Открыть\". Файлы игры сохранятся.", "The new version will download. Then your phone's INSTALL screen opens: tap \"Update/Install\", then \"Open\". Game files are kept."},
+                {"updok", "Davom etish", "Продолжить", "Continue"},
+                {"upderr", "Yangilab bo'lmadi", "Не удалось обновить", "Update failed"},
+                {"updretry", "Qayta urinish", "Повторить", "Retry"},
+                {"updbrowser", "Brauzer orqali", "Через браузер", "Via browser"},
                 {"settings", "Sozlamalar", "Настройки", "Settings"},
                 {"lang", "Til", "Язык", "Language"},
                 {"sens", "Sichqoncha / ekran sezgirligi", "Чувствительность", "Sensitivity"},
@@ -1591,7 +1596,7 @@ public class MainActivity extends Activity {
         b.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                startSelfUpdate();
+                confirmSelfUpdate();
             }
         });
         card.addView(b);
@@ -1603,6 +1608,80 @@ public class MainActivity extends Activity {
     private TextView updText;
     private static final String ACTION_INSTALL = "uz.boosttop.cs16.INSTALL_STATUS";
     private android.content.BroadcastReceiver installReceiver;
+
+    /** Avval ogohlantiramiz: o'rnatishda ilova yopiladi (ko'pchilik buni "otib yubordi" deb o'ylaydi). */
+    private void confirmSelfUpdate() {
+        if (updating) return;
+        try {
+            if (Build.VERSION.SDK_INT >= 33
+                    && checkSelfPermission("android.permission.POST_NOTIFICATIONS") != android.content.pm.PackageManager.PERMISSION_GRANTED)
+                requestPermissions(new String[]{"android.permission.POST_NOTIFICATIONS"}, 77);
+        } catch (Exception ignored) {
+        }
+        new AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog)
+                .setTitle(t("upd"))
+                .setMessage(t("updwarn"))
+                .setPositiveButton(t("updok"), new android.content.DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(android.content.DialogInterface d, int w) {
+                        startSelfUpdate();
+                    }
+                })
+                .setNegativeButton(t("cancel"), null)
+                .show();
+    }
+
+    /** Xato bo'lsa ilovadan chiqarib yubormaymiz - tanlov beramiz. */
+    private void showUpdateError(String err) {
+        sendStat("upderr", (err == null ? "?" : err) + " | " + Build.MANUFACTURER + " " + Build.MODEL + " | SDK " + Build.VERSION.SDK_INT);
+        try {
+            new AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog)
+                    .setTitle(t("upderr"))
+                    .setMessage(String.valueOf(err))
+                    .setPositiveButton(t("updretry"), new android.content.DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(android.content.DialogInterface d, int w) {
+                            startSelfUpdate();
+                        }
+                    })
+                    .setNeutralButton(t("updbrowser"), new android.content.DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(android.content.DialogInterface d, int w) {
+                            openUrl(apkUrl);
+                        }
+                    })
+                    .setNegativeButton(t("cancel"), null)
+                    .show();
+        } catch (Exception e) {
+            toastLike(t("dlerr") + err);
+        }
+    }
+
+    /** Yangi APK saqlanadigan fayl (Android 7+ da content:// orqali beriladi). */
+    private File updateApkFile() {
+        File dir = Build.VERSION.SDK_INT >= 24 ? new File(getCacheDir(), "upd") : getExternalCacheDir();
+        if (dir == null) dir = getCacheDir();
+        dir.mkdirs();
+        return new File(dir, "update.apk");
+    }
+
+    /** Tizim o'rnatuvchisini ochadi: "Yangilash/O'rnatish" -> tugagach "Ochish". */
+    private void openInstaller(File apk) {
+        try {
+            Uri uri;
+            if (Build.VERSION.SDK_INT >= 24) uri = Uri.parse("content://" + getPackageName() + ".apk/update.apk");
+            else {
+                apk.setReadable(true, false);
+                uri = Uri.fromFile(apk);
+            }
+            Intent i = new Intent(Intent.ACTION_VIEW)
+                    .setDataAndType(uri, "application/vnd.android.package-archive")
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | 1 /* FLAG_GRANT_READ_URI_PERMISSION */);
+            startActivity(i);
+        } catch (Exception e) {
+            showUpdateError(e.getClass().getSimpleName() + ": " + e.getMessage());
+        }
+    }
 
     private void startSelfUpdate() {
         if (updating) return;
@@ -1624,7 +1703,6 @@ public class MainActivity extends Activity {
             public void run() {
                 String err = null;
                 HttpURLConnection c = null;
-                android.content.pm.PackageInstaller.Session session = null;
                 try {
                     c = (HttpURLConnection) new URL(url).openConnection();
                     c.setConnectTimeout(15000);
@@ -1645,13 +1723,10 @@ public class MainActivity extends Activity {
                     }
                     if (c.getResponseCode() != 200) throw new Exception("HTTP " + c.getResponseCode());
                     final long total = Math.max(1, c.getContentLength());
-                    android.content.pm.PackageInstaller pi = getPackageManager().getPackageInstaller();
-                    android.content.pm.PackageInstaller.SessionParams params =
-                            new android.content.pm.PackageInstaller.SessionParams(android.content.pm.PackageInstaller.SessionParams.MODE_FULL_INSTALL);
-                    params.setAppPackageName(getPackageName());
-                    int id = pi.createSession(params);
-                    session = pi.openSession(id);
-                    OutputStream out = session.openWrite("base.apk", 0, c.getContentLength() > 0 ? c.getContentLength() : -1);
+                    // APK ni faylga yuklaymiz, keyin tizimning o'z o'rnatuvchisini ochamiz:
+                    // u "O'rnatish" -> "Ochish" tugmalarini ko'rsatadi, o'yinchi nima bo'layotganini ko'radi.
+                    final File apk = updateApkFile();
+                    OutputStream out = new FileOutputStream(apk);
                     InputStream in = c.getInputStream();
                     byte[] buf = new byte[65536];
                     long done = 0, lastUi = 0;
@@ -1671,26 +1746,19 @@ public class MainActivity extends Activity {
                             });
                         }
                     }
-                    session.fsync(out);
                     out.close();
                     in.close();
+                    if (c.getContentLength() > 0 && done < c.getContentLength()) throw new Exception("yuklash uzildi (" + done + "/" + c.getContentLength() + ")");
                     runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
-                            if (updText != null) updText.setText("100%");
-                            toastLike(t("updinst"));
+                            updating = false;
+                            render();
+                            openInstaller(apk);
                         }
                     });
-                    Intent cb = new Intent(ACTION_INSTALL).setPackage(getPackageName());
-                    int fl = Build.VERSION.SDK_INT >= 31 ? 0x02000000 /* FLAG_MUTABLE */ : 0;
-                    android.app.PendingIntent pIntent = android.app.PendingIntent.getBroadcast(MainActivity.this, id, cb,
-                            android.app.PendingIntent.FLAG_UPDATE_CURRENT | fl);
-                    session.commit(pIntent.getIntentSender());
-                    session.close();
-                    session = null;
                 } catch (Exception e) {
                     err = e.getClass().getSimpleName() + ": " + e.getMessage();
-                    if (session != null) try { session.abandon(); } catch (Exception ignored) { }
                 } finally {
                     if (c != null) c.disconnect();
                 }
@@ -1701,8 +1769,7 @@ public class MainActivity extends Activity {
                         if (fe != null) {
                             updating = false;
                             render();
-                            toastLike(t("dlerr") + fe);
-                            openUrl(apkUrl); // zaxira: brauzer orqali
+                            showUpdateError(fe);
                         }
                     }
                 });
@@ -1729,7 +1796,8 @@ public class MainActivity extends Activity {
                     updating = false;
                     render();
                     String msg = intent.getStringExtra(android.content.pm.PackageInstaller.EXTRA_STATUS_MESSAGE);
-                    toastLike(t("dlerr") + (msg == null ? st : msg));
+                    if (st != android.content.pm.PackageInstaller.STATUS_FAILURE_ABORTED)
+                        showUpdateError((msg == null ? "status " + st : msg));
                 }
             }
         };
