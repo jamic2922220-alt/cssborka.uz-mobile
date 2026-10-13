@@ -21,6 +21,45 @@ jobs:
           submodules: recursive
       - name: Install dependencies
         run: bash scripts/gha/deps_android.sh
+      - name: Patch gyro (PRO - yumshoq va aniq)
+        run: |
+          python3 - <<'PY'
+          p = 'engine/client/input/in_gyro.c'
+          s = open(p, encoding='utf-8').read()
+          def must(a, b):
+              global s
+              assert a in s, a
+              s = s.replace(a, b, 1)
+          must('static CVAR_DEFINE_AUTO( gyro_debug, "0", 0, "visualize built-in device gyroscope" );',
+               'static CVAR_DEFINE_AUTO( gyro_debug, "0", 0, "visualize built-in device gyroscope" );\n'
+               'static CVAR_DEFINE_AUTO( gyro_smooth, "0.5", FCVAR_ARCHIVE | FCVAR_FILTERABLE, "gyro smoothing 0..0.9 (removes hand shake)" );\n'
+               'static CVAR_DEFINE_AUTO( gyro_soft, "1", FCVAR_ARCHIVE | FCVAR_FILTERABLE, "soft deadzone: tiny movements are damped, not cut" );\n'
+               'static vec3_t gyro_filtered;')
+          must('\tCvar_RegisterVariable( &gyro_debug );',
+               '\tCvar_RegisterVariable( &gyro_debug );\n\tCvar_RegisterVariable( &gyro_smooth );\n\tCvar_RegisterVariable( &gyro_soft );')
+          old_start = '\tif( fabs( mapped_speed[0] ) < gyro_pitch_deadzone.value )'
+          old_end = '\t*dpitch -= gyro_pitch.value'
+          i = s.index(old_start); j = s.index(old_end)
+          s = s[:i] + (
+              '\t{\n'
+              '\t\tfloat a = bound( 0.0f, gyro_smooth.value, 0.9f );\n'
+              '\t\tconst float dz[3] = { gyro_pitch_deadzone.value, gyro_yaw_deadzone.value, gyro_roll_deadzone.value };\n'
+              '\t\tfor( int k = 0; k < 3; k++ )\n'
+              '\t\t{\n'
+              '\t\t\tgyro_filtered[k] = gyro_filtered[k] * a + mapped_speed[k] * ( 1.0f - a );\n'
+              '\t\t\tfloat v = gyro_filtered[k];\n'
+              '\t\t\tfloat av = fabs( v );\n'
+              '\t\t\tif( gyro_soft.value && dz[k] > 0.0f )\n'
+              '\t\t\t{\n'
+              '\t\t\t\tif( av < dz[k] * 2.0f ) v *= av / ( dz[k] * 2.0f );\n'
+              '\t\t\t}\n'
+              '\t\t\telse if( av < dz[k] ) v = 0.0f;\n'
+              '\t\t\tmapped_speed[k] = v;\n'
+              '\t\t}\n'
+              '\t}\n\n') + s[j:]
+          open(p, 'w', encoding='utf-8').write(s)
+          print('in_gyro.c patched')
+          PY
       - name: Build engine
         run: bash scripts/gha/build_android.sh
       - name: Collect engine parts
