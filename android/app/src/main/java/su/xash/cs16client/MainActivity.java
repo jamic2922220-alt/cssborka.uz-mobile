@@ -159,6 +159,9 @@ public class MainActivity extends Activity {
                 {"xt2", "Qalin", "Толстый", "Thick"},
                 {"xt3", "Juda qalin", "Очень толстый", "Extra thick"},
                 {"xdot", "Markazda nuqta", "Точка в центре", "Center dot"},
+                {"ctrl", "Boshqaruv", "Управление", "Controls"},
+                {"ctrl_pro", "PRO (2 ta o'q tugmasi)", "PRO (2 кнопки огня)", "PRO (2 fire buttons)"},
+                {"ctrl_std", "Standart", "Стандарт", "Standard"},
                 {"auto", "Avto", "Авто", "Auto"},
                 {"small", "Kichik", "Малый", "Small"},
                 {"medium", "O'rta", "Средний", "Medium"},
@@ -396,7 +399,7 @@ public class MainActivity extends Activity {
         writeSettings();
         // O'yin ichidagi server ro'yxatida faqat boost-top.com serverlari chiqsin:
         // standart (begona) master-serverlarni o'chirib, o'zimiznikini qo'shamiz.
-        String argv = "-log -dll @yapb +clearmasters +exec boosttop_ms.cfg +exec boosttop_settings.cfg";
+        String argv = "-log -dll @yapb +clearmasters +exec boosttop_ms.cfg +exec boosttop_settings.cfg" + touchPresetArg();
         if (ip != null) {
             argv += " +connect " + ip;
             sendStat("connect", ip);
@@ -412,6 +415,27 @@ public class MainActivity extends Activity {
         } catch (Exception e) {
             toastLike(String.valueOf(e.getMessage()));
         }
+    }
+
+    // ---------------- PRO boshqaruv (tugmalar joylashuvi) ----------------
+    private static final String TOUCH_PRO = "// boost-top PRO boshqaruv: chap qo'lda ham O'Q tugmasi (o'ng barmoq nishonda qoladi)\ntouch_removeall\ntouch_pitch \"50\"\ntouch_yaw \"50\"\ntouch_precise_amount \"0.5\"\ntouch_move_indicator \"3\"\ntouch_addbutton \"move\" \"\" \"_move\" 0.000000 0.110000 0.480000 1.000000 255 255 255 150 0\ntouch_addbutton \"look\" \"\" \"_look\" 0.480000 0.110000 1.000000 1.000000 255 255 255 150 0\ntouch_addbutton \"attack_l\" \"touch/gfx/attack\" \"+attack\" 0.040000 0.300000 0.150000 0.500000 255 90 90 190 0 1\ntouch_addbutton \"attack\" \"touch/gfx/attack\" \"+attack\" 0.780000 0.420000 0.920000 0.670000 255 90 90 190 0 1\ntouch_addbutton \"attack2\" \"touch/gfx/attack2\" \"+attack2\" 0.680000 0.250000 0.770000 0.410000 255 255 255 170 0 1\ntouch_addbutton \"jump\" \"touch/gfx/jump\" \"+jump\" 0.910000 0.200000 1.000000 0.380000 255 255 255 160 0 1\ntouch_addbutton \"duck\" \"touch/gfx/duck\" \"+duck\" 0.900000 0.700000 1.000000 0.880000 255 255 255 160 512 1\ntouch_addbutton \"reload\" \"touch/gfx/reload\" \"+reload\" 0.800000 0.720000 0.890000 0.880000 255 255 255 160 0 1\ntouch_addbutton \"use\" \"touch/gfx/use\" \"+use\" 0.920000 0.400000 1.000000 0.540000 255 255 255 150 0 1\ntouch_addbutton \"w1\" \"touch/gfx/w_rifle\" \"slot1\" 0.100000 0.000000 0.160000 0.106667 255 255 255 150 0 1\ntouch_addbutton \"w2\" \"touch/gfx/w_pistol\" \"slot2\" 0.180000 0.000000 0.240000 0.106667 255 255 255 150 0 1\ntouch_addbutton \"w3\" \"touch/gfx/w_knife\" \"slot3\" 0.260000 0.000000 0.320000 0.106667 255 255 255 150 0 1\ntouch_addbutton \"w4\" \"touch/gfx/w_grenade\" \"slot4\" 0.340000 0.000000 0.400000 0.106667 255 255 255 150 0 1\ntouch_addbutton \"w5\" \"touch/gfx/w_c4\" \"slot5\" 0.660000 0.000000 0.720000 0.106667 255 255 255 150 0 1\ntouch_addbutton \"buy\" \"touch/gfx/buy\" \"buy\" 0.460000 0.860000 0.540000 1.000000 255 255 255 150 0 1\ntouch_addbutton \"score\" \"touch/gfx/score\" \"scoreboard\" 0.920000 0.000000 1.000000 0.142222 255 255 255 150 0 1\ntouch_addbutton \"touch_edit\" \"touch/gfx/settings\" \"togglemenu\" 0.460000 0.000000 0.540000 0.142222 255 255 255 150 0 1\ntouch_addbutton \"drop\" \"touch/gfx/drop\" \"drop\" 0.580000 0.000000 0.640000 0.106667 255 255 255 150 0 1\ntouch_addbutton \"chat\" \"touch/gfx/chat_all\" \"messagemode\" 0.000000 0.000000 0.060000 0.106667 255 255 255 150 0 1\ntouch_addbutton \"change_team\" \"touch/gfx/change_team\" \"chooseteam\" 0.000000 0.130000 0.060000 0.240000 255 255 255 150 0 1\ntouch_addbutton \"radio\" \"touch/gfx/radio\" \"showvguimenu 38\" 0.740000 0.000000 0.800000 0.106667 255 255 255 150 0 1\ntouch_addbutton \"walk\" \"touch/gfx/walk\" \"+speed\" 0.180000 0.800000 0.270000 0.960000 255 255 255 140 0 1\ntouch_addbutton \"invprev\" \"touch/gfx/left\" \"invprev\" 0.000000 0.560000 0.060000 0.660000 255 255 255 150 0 1\ntouch_addbutton \"invnext\" \"touch/gfx/right\" \"invnext\" 0.000000 0.680000 0.060000 0.780000 255 255 255 150 0 1\n";
+
+    /** Tanlangan boshqaruvni o'yin ochilishida BIR MARTA qo'llaydi (keyin o'yinchi o'zi o'zgartirsa saqlanib qoladi). */
+    private String touchPresetArg() {
+        SharedPreferences p = prefs();
+        String lay = p.getString("touchlay", "pro");
+        if (lay.equals(p.getString("touch_applied", ""))) return "";
+        try {
+            File dir = new File(baseDir(), "cstrike/touch_presets");
+            dir.mkdirs();
+            FileOutputStream fo = new FileOutputStream(new File(dir, "boosttop_pro.cfg"));
+            fo.write(TOUCH_PRO.getBytes("UTF-8"));
+            fo.close();
+        } catch (Exception e) {
+            return "";
+        }
+        p.edit().putString("touch_applied", lay).apply();
+        return "pro".equals(lay) ? " +exec touch_presets/boosttop_pro.cfg" : " +exec touch_presets/phone_ahsim.cfg";
     }
 
     // ---------------- sozlamalar: til, sezgirlik, pritsel ----------------
@@ -717,6 +741,32 @@ public class MainActivity extends Activity {
         }
         box.addView(colorRow);
 
+        // boshqaruv
+        final String[] LAYS = {"pro", "std"};
+        final String[] selLay = {p.getString("touchlay", "pro")};
+        TextView ct = text(t("ctrl"), 14, C_GOLD, true);
+        ct.setPadding(0, dp(10), 0, 0);
+        box.addView(ct);
+        LinearLayout layRow = chipRow();
+        final Button[] layBtns = new Button[LAYS.length];
+        for (int i = 0; i < LAYS.length; i++) {
+            final int k = i;
+            layBtns[i] = button(t("ctrl_" + LAYS[i]), C_LINE);
+            layBtns[i].setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
+            layBtns[i].setBackground(round(LAYS[i].equals(selLay[0]) ? C_ACCENT : C_LINE, 8, 0));
+            layBtns[i].setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    selLay[0] = LAYS[k];
+                    for (int j = 0; j < LAYS.length; j++) layBtns[j].setBackground(round(j == k ? C_ACCENT : C_LINE, 8, 0));
+                }
+            });
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+            lp.setMargins(0, 0, dp(5), 0);
+            layRow.addView(layBtns[i], lp);
+        }
+        box.addView(layRow);
+
         // grafika
         final String[] GFX = {"high", "mid", "low"};
         final String[] selGfx = {p.getString("gfx", "high")};
@@ -760,7 +810,8 @@ public class MainActivity extends Activity {
                                 .putString("gfx", selGfx[0]).putBoolean("fps", fpsCb.isChecked())
                                 .putString("lang", selLang[0]).putFloat("sens", selSens[0])
                                 .putString("xsize", selSize[0]).putInt("xcolor", selColor[0])
-                                .putInt("xthick", selThick[0]).putBoolean("xdot", dotCb.isChecked()).apply();
+                                .putInt("xthick", selThick[0]).putBoolean("xdot", dotCb.isChecked())
+                                .putString("touchlay", selLay[0]).putString("touch_applied", "").apply();
                         lang = selLang[0];
                         writeSettings();
                         toastLike(t("saved"));
