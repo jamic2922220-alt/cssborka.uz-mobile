@@ -12,9 +12,13 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- ilova ichida yangilanishni o'rnatish uchun -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <!-- yangilangandan keyin "ochish uchun bosing" bildirishnomasi -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- ovozli chat (voice) uchun -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
-   <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+
     <application
         android:forceQueryable="true"
         android:hardwareAccelerated="true"
@@ -35,6 +39,22 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- yangilanish APK sini tizim o'rnatuvchisiga berish -->
+        <provider
+            android:name=".ApkProvider"
+            android:authorities="${applicationId}.apk"
+            android:exported="false"
+            android:grantUriPermissions="true" />
+
+        <!-- ilova yangilangach qayta ochish / bildirishnoma -->
+        <receiver
+            android:name=".UpdateReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
 
         <activity
             android:name=".CZeroActivity"
