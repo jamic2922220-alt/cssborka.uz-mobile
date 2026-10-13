@@ -153,6 +153,12 @@ public class MainActivity extends Activity {
                 {"sens", "Sichqoncha / ekran sezgirligi", "Чувствительность", "Sensitivity"},
                 {"xsize", "Pritsel o'lchami", "Размер прицела", "Crosshair size"},
                 {"xcolor", "Pritsel rangi", "Цвет прицела", "Crosshair color"},
+                {"xthick", "Pritsel qalinligi", "Толщина прицела", "Crosshair thickness"},
+                {"xt0", "Klassik", "Классика", "Classic"},
+                {"xt1", "Ingichka", "Тонкий", "Thin"},
+                {"xt2", "Qalin", "Толстый", "Thick"},
+                {"xt3", "Juda qalin", "Очень толстый", "Extra thick"},
+                {"xdot", "Markazda nuqta", "Точка в центре", "Center dot"},
                 {"auto", "Avto", "Авто", "Auto"},
                 {"small", "Kichik", "Малый", "Small"},
                 {"medium", "O'rta", "Средний", "Medium"},
@@ -433,12 +439,28 @@ public class MainActivity extends Activity {
                     {"sensitivity", String.format(Locale.US, "%.1f", p.getFloat("sens", 3.0f))},
                     {"cl_crosshair_size", p.getString("xsize", "auto")},
                     {"cl_crosshair_color", color},
-                    {"xhair_enable", "0"},
+                    {"xhair_enable", p.getInt("xthick", 2) > 0 ? "1" : "0"},
+                    {"xhair_thick", String.valueOf(Math.max(1, p.getInt("xthick", 2)))},
+                    {"xhair_size", "small".equals(p.getString("xsize", "auto")) ? "3" : "large".equals(p.getString("xsize", "auto")) ? "8" : "5"},
+                    {"xhair_gap", "small".equals(p.getString("xsize", "auto")) ? "1" : "large".equals(p.getString("xsize", "auto")) ? "3" : "2"},
+                    {"xhair_pad", "1"},
+                    {"xhair_dot", p.getBoolean("xdot", false) ? "1" : "0"},
+                    {"xhair_t", "0"},
+                    {"xhair_additive", "0"},
+                    {"xhair_dynamic_scale", "0"},
+                    {"xhair_color", color + " 255"},
                     {"cl_showfps", p.getBoolean("fps", false) ? "1" : "0"},
                     {"gl_picmip", "low".equals(p.getString("gfx", "high")) ? "1" : "0"},
                     {"r_dynamic", "high".equals(p.getString("gfx", "high")) ? "1" : "0"},
                     {"fps_max", "low".equals(p.getString("gfx", "high")) ? "60" : "100"},
                     {"developer", "0"},
+                    // tarmoq: o'qlar aniq hisoblanishi uchun (server o'z chegarasigacha cheklaydi)
+                    {"rate", "100000"},
+                    {"cl_updaterate", "101"},
+                    {"cl_cmdrate", "101"},
+                    {"ex_interp", "0.02"},
+                    {"cl_lw", "1"},
+                    {"cl_lc", "1"},
             };
             File dir = new File(baseDir(), "cstrike");
             if (!dir.exists()) return;
@@ -446,6 +468,8 @@ public class MainActivity extends Activity {
             for (String[] v : cv) sb.append(v[0]).append(" \"").append(v[1]).append("\"\n");
             String nick = p.getString("nick", "").replace("\"", "").replace(";", "").trim();
             if (nick.length() > 0) sb.append("name \"").append(nick).append("\"\n");
+            // serverdagi bt_mobile plagini telefon o'yinchisini shu belgi orqali taniydi
+            sb.append("setinfo _bt \"m\"\n");
             FileOutputStream fo = new FileOutputStream(new File(dir, "boosttop_settings.cfg"));
             fo.write(sb.toString().getBytes("UTF-8"));
             fo.close();
@@ -461,6 +485,7 @@ public class MainActivity extends Activity {
                     boolean ours = false;
                     for (String[] v : cv) if (tl.startsWith(v[0] + " ") || tl.equals(v[0])) ours = true;
                     if (p.getString("nick", "").trim().length() > 0 && tl.startsWith("name ")) ours = true;
+                    if (tl.startsWith("setinfo _bt")) ours = true;
                     if (!ours) out.append(line).append('\n');
                 }
                 br.close();
@@ -477,6 +502,8 @@ public class MainActivity extends Activity {
     private class CrossView extends View {
         int color = XCOLORS[0];
         String size = "auto";
+        int thick = 2;
+        boolean dot = false;
         final Paint paint = new Paint();
 
         CrossView(Context c) {
@@ -486,15 +513,21 @@ public class MainActivity extends Activity {
         @Override
         protected void onDraw(Canvas cv) {
             cv.drawColor(0xFF2A3A2A);
-            paint.setColor(color);
-            paint.setStrokeWidth(dp(2));
             float cx = getWidth() / 2f, cy = getHeight() / 2f;
             float len = dp("small".equals(size) ? 6 : "large".equals(size) ? 14 : 10);
             float gap = dp("small".equals(size) ? 3 : "large".equals(size) ? 7 : 5);
-            cv.drawLine(cx - gap - len, cy, cx - gap, cy, paint);
-            cv.drawLine(cx + gap, cy, cx + gap + len, cy, paint);
-            cv.drawLine(cx, cy - gap - len, cx, cy - gap, paint);
-            cv.drawLine(cx, cy + gap, cx, cy + gap + len, paint);
+            float w = dp(thick <= 0 ? 1.5f : thick * 1.5f);
+            paint.setStyle(Paint.Style.FILL);
+            // qora hoshiya (PRO pritselda) - har qanday fonda ko'rinadi
+            for (int pass = (thick > 0 ? 0 : 1); pass < 2; pass++) {
+                float o = pass == 0 ? dp(1) : 0;
+                paint.setColor(pass == 0 ? 0xFF000000 : color);
+                cv.drawRect(cx - gap - len - o, cy - w / 2 - o, cx - gap + o, cy + w / 2 + o, paint);
+                cv.drawRect(cx + gap - o, cy - w / 2 - o, cx + gap + len + o, cy + w / 2 + o, paint);
+                cv.drawRect(cx - w / 2 - o, cy - gap - len - o, cx + w / 2 + o, cy - gap + o, paint);
+                cv.drawRect(cx - w / 2 - o, cy + gap - o, cx + w / 2 + o, cy + gap + len + o, paint);
+                if (dot && thick > 0) cv.drawRect(cx - w / 2 - o, cy - w / 2 - o, cx + w / 2 + o, cy + w / 2 + o, paint);
+            }
         }
     }
 
@@ -511,6 +544,7 @@ public class MainActivity extends Activity {
         final float[] selSens = {p.getFloat("sens", 3.0f)};
         final String[] selSize = {p.getString("xsize", "auto")};
         final int[] selColor = {p.getInt("xcolor", XCOLORS[0])};
+        final int[] selThick = {p.getInt("xthick", 2)};
 
         ScrollView sv = new ScrollView(this);
         final LinearLayout box = new LinearLayout(this);
@@ -584,6 +618,8 @@ public class MainActivity extends Activity {
         final CrossView cross = new CrossView(this);
         cross.color = selColor[0];
         cross.size = selSize[0];
+        cross.thick = selThick[0];
+        cross.dot = p.getBoolean("xdot", false);
         LinearLayout.LayoutParams cvp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(70));
         cvp.setMargins(0, dp(12), 0, 0);
         box.addView(cross, cvp);
@@ -613,6 +649,44 @@ public class MainActivity extends Activity {
             sizeRow.addView(sizeBtns[i], lp);
         }
         box.addView(sizeRow);
+
+        // qalinlik
+        TextView xt = text(t("xthick"), 14, C_GOLD, true);
+        xt.setPadding(0, dp(10), 0, 0);
+        box.addView(xt);
+        LinearLayout thickRow = chipRow();
+        final Button[] thickBtns = new Button[4];
+        for (int i = 0; i < 4; i++) {
+            final int k = i;
+            thickBtns[i] = button(t("xt" + i), C_LINE);
+            thickBtns[i].setTextSize(TypedValue.COMPLEX_UNIT_SP, 11);
+            thickBtns[i].setBackground(round(i == selThick[0] ? C_ACCENT : C_LINE, 8, 0));
+            thickBtns[i].setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    selThick[0] = k;
+                    cross.thick = k;
+                    cross.invalidate();
+                    for (int j = 0; j < 4; j++) thickBtns[j].setBackground(round(j == k ? C_ACCENT : C_LINE, 8, 0));
+                }
+            });
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+            lp.setMargins(0, 0, dp(4), 0);
+            thickRow.addView(thickBtns[i], lp);
+        }
+        box.addView(thickRow);
+        final CheckBox dotCb = new CheckBox(this);
+        dotCb.setText(t("xdot"));
+        dotCb.setTextColor(C_TEXT);
+        dotCb.setChecked(p.getBoolean("xdot", false));
+        dotCb.setOnCheckedChangeListener(new android.widget.CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(android.widget.CompoundButton b, boolean on) {
+                cross.dot = on;
+                cross.invalidate();
+            }
+        });
+        box.addView(dotCb);
 
         // rang
         TextView xc = text(t("xcolor"), 14, C_GOLD, true);
@@ -685,7 +759,8 @@ public class MainActivity extends Activity {
                         p.edit().putString("nick", nickEd.getText().toString().trim())
                                 .putString("gfx", selGfx[0]).putBoolean("fps", fpsCb.isChecked())
                                 .putString("lang", selLang[0]).putFloat("sens", selSens[0])
-                                .putString("xsize", selSize[0]).putInt("xcolor", selColor[0]).apply();
+                                .putString("xsize", selSize[0]).putInt("xcolor", selColor[0])
+                                .putInt("xthick", selThick[0]).putBoolean("xdot", dotCb.isChecked()).apply();
                         lang = selLang[0];
                         writeSettings();
                         toastLike(t("saved"));
