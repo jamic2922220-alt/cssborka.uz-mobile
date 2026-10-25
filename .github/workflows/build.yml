@@ -60,7 +60,7 @@ jobs:
           open(p, 'w', encoding='utf-8').write(s)
           print('in_gyro.c patched')
           PY
-      - name: Patch touch (otish tugmasi bilan nishonga olish + yangi tugmalar)
+      - name: Patch touch + avto qayta ulanish
         run: |
           python3 - <<'PY'
           p = 'engine/client/input/in_touch.c'
@@ -127,12 +127,12 @@ jobs:
           		Cbuf_Execute();
           	}
           	else Touch_LoadDefaults_f();
-          """, """	qboolean bt_new = bt_touch_layout.value < 2 && FS_FileExists( "touch_presets/boosttop_pro.cfg", false );
+          """, """	qboolean bt_new = bt_touch_layout.value < 3 && FS_FileExists( "touch_presets/boosttop_pro.cfg", false );
           	if( bt_new )
           	{
           		Cbuf_AddText( "exec \\"touch_presets/boosttop_pro.cfg\\"\\n" );
           		Cbuf_Execute();
-          		Cvar_DirectSet( &bt_touch_layout, "2" );
+          		Cvar_DirectSet( &bt_touch_layout, "3" );
           	}
           	else if( FS_FileExists( touch_config_file.string, true ) )
           	{
@@ -148,6 +148,27 @@ jobs:
           }""")
           open(p, 'w', encoding='utf-8').write(s)
           print('in_touch.c patched (aim while firing + boosttop layout)')
+
+          # boost-top: internet uzilib qolsa serverga o'zi qayta ulanadi
+          p = 'engine/client/cl_main.c'
+          s = open(p, encoding='utf-8').read()
+          must('CVAR_DEFINE_AUTO( cl_timeout, "60", 0, "connect timeout (in-seconds)" );',
+               'CVAR_DEFINE_AUTO( cl_timeout, "60", 0, "connect timeout (in-seconds)" );\n'
+               'static CVAR_DEFINE_AUTO( cl_autoreconnect, "1", FCVAR_ARCHIVE, "reconnect automatically after connection timeout" );')
+          must('\tCvar_RegisterVariable( &cl_timeout );',
+               '\tCvar_RegisterVariable( &cl_timeout );\n\tCvar_RegisterVariable( &cl_autoreconnect );')
+          must("""			Con_Printf( "\\nServer connection timed out.\\n" );
+          			CL_Disconnect();
+          			return;""", """			Con_Printf( "\\nServer connection timed out.\\n" );
+          			CL_Disconnect();
+          			if( cl_autoreconnect.value && !SV_Active( ))
+          			{
+          				Con_Printf( "Avto qayta ulanish...\\n" );
+          				Cbuf_AddText( "retry\\n" );
+          			}
+          			return;""")
+          open(p, 'w', encoding='utf-8').write(s)
+          print('cl_main.c patched (auto reconnect)')
           PY
       - name: Build engine
         run: bash scripts/gha/build_android.sh
@@ -229,6 +250,18 @@ jobs:
               'cl_corpsestay "0"',
               'r_decals "100"',
               'mp_decals "50"',
+              'cl_timeout "25"',
+              'cl_autoreconnect "1"',
+              'vibration_enable "1"',
+              "// sezgirlik: Sekin / O'rtacha / Tez",
+              'alias bt_sens_1 "touch_yaw 40; touch_pitch 32; gyro_yaw 0.9; gyro_pitch 0.75; echo Sezgirlik: SEKIN; alias bt_sens bt_sens_2"',
+              'alias bt_sens_2 "touch_yaw 55; touch_pitch 45; gyro_yaw 1.2; gyro_pitch 1.0; echo Sezgirlik: ORTACHA; alias bt_sens bt_sens_3"',
+              'alias bt_sens_3 "touch_yaw 75; touch_pitch 60; gyro_yaw 1.6; gyro_pitch 1.3; echo Sezgirlik: TEZ; alias bt_sens bt_sens_1"',
+              'alias bt_sens "bt_sens_3"',
+              '// batareya rejimi',
+              'alias bt_batt_on "fps_max 60; echo Batareya rejimi: YONIQ (60 FPS); alias bt_batt bt_batt_off"',
+              'alias bt_batt_off "fps_max 100; echo Batareya rejimi: OCHIQ; alias bt_batt bt_batt_on"',
+              'alias bt_batt "bt_batt_on"',
           ]) + '\n')
           # ilova build raqami (avtomatik yangilanish uchun)
           os.makedirs(os.path.join(app, 'engine_assets'), exist_ok=True)
@@ -307,8 +340,20 @@ jobs:
               'touch_addbutton "score" "touch/gfx/score" "scoreboard" 0.070000 0.000000 0.130000 0.107000 255 255 255 150 0 1',
               'touch_addbutton "chat" "touch/gfx/chat_all" "messagemode" 0.140000 0.000000 0.200000 0.107000 255 255 255 130 0 1',
               'touch_addbutton "radio" "touch/gfx/radio" "showvguimenu 38" 0.210000 0.000000 0.270000 0.107000 255 255 255 130 0 1',
+              '// sezgirlik va batareya',
+              'touch_addbutton "sens" "touch/gfx/plus" "bt_sens" 0.800000 0.000000 0.860000 0.107000 255 255 255 150 0 1',
+              'touch_addbutton "batt" "touch/gfx/light" "bt_batt" 0.865000 0.000000 0.925000 0.107000 255 255 255 150 0 1',
               'touch_addbutton "change_team" "touch/gfx/change_team" "chooseteam" 0.930000 0.000000 0.990000 0.107000 255 255 255 130 0 1',
           ]) + '\n')
+          # boost-top: dushmanni o'ldirganda telefon yengil titraydi
+          p = 'cl_dll/death.cpp'
+          s = open(p, encoding='utf-8').read()
+          a = '\t\tkiller_this_player = g_PlayerInfoList[killer].thisplayer;\n'
+          if a in s:
+              s = s.replace(a, a + '\t\tif( killer_this_player && killer != victim && g_iXash )\n\t\t\tgMobileAPI.pfnVibrate( 60.0f, 0 );\n', 1)
+              open(p, 'w', encoding='utf-8').write(s); print('death.cpp: kill vibration')
+          else:
+              print('::warning::death.cpp topilmadi, titrash qo\'shilmadi')
           # CMake ham shu fayllarni src/main/assets ga ko'chiradi - takrorlanmasin, o'chiramiz
           p = 'CMakeLists.txt'
           s = open(p, encoding='utf-8').read()
