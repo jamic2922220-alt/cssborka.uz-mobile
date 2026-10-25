@@ -127,12 +127,12 @@ jobs:
           		Cbuf_Execute();
           	}
           	else Touch_LoadDefaults_f();
-          """, """	qboolean bt_new = bt_touch_layout.value < 4 && FS_FileExists( "touch_presets/boosttop_pro.cfg", false );
+          """, """	qboolean bt_new = bt_touch_layout.value < 5 && FS_FileExists( "touch_presets/boosttop_pro.cfg", false );
           	if( bt_new )
           	{
           		Cbuf_AddText( "exec \\"touch_presets/boosttop_pro.cfg\\"\\n" );
           		Cbuf_Execute();
-          		Cvar_DirectSet( &bt_touch_layout, "4" );
+          		Cvar_DirectSet( &bt_touch_layout, "5" );
           	}
           	else if( FS_FileExists( touch_config_file.string, true ) )
           	{
@@ -266,6 +266,30 @@ jobs:
               'alias bt_hand_l "exec touch_presets/boosttop_left.cfg; echo Tugmalar: CHAPAQAY; alias bt_hand bt_hand_r"',
               'alias bt_hand_r "exec touch_presets/boosttop_pro.cfg; echo Tugmalar: ODDIY; alias bt_hand bt_hand_l"',
               'alias bt_hand "bt_hand_l"',
+              "// qo'shimcha panel (⚙)",
+              'alias bt_more_on "touch_show x_*; alias bt_more bt_more_off"',
+              'alias bt_more_off "touch_hide x_*; alias bt_more bt_more_on"',
+              'alias bt_more "bt_more_on"',
+              '// pritsel (krestik) variantlari',
+              'alias bt_xh_1 "xhair_enable 1; xhair_color \\"0 255 0 255\\"; xhair_size 4; xhair_gap 2; xhair_thick 1; xhair_dot 0; echo Pritsel: YASHIL; alias bt_xh bt_xh_2"',
+              'alias bt_xh_2 "xhair_enable 1; xhair_color \\"255 40 40 255\\"; xhair_size 5; xhair_gap 2; xhair_thick 1; xhair_dot 0; echo Pritsel: QIZIL; alias bt_xh bt_xh_3"',
+              'alias bt_xh_3 "xhair_enable 1; xhair_color \\"0 230 255 255\\"; xhair_size 4; xhair_gap 1; xhair_thick 1; xhair_dot 0; echo Pritsel: MOVIY; alias bt_xh bt_xh_4"',
+              'alias bt_xh_4 "xhair_enable 1; xhair_color \\"255 230 0 255\\"; xhair_size 3; xhair_gap 2; xhair_thick 1; xhair_dot 1; echo Pritsel: SARIQ + NUQTA; alias bt_xh bt_xh_5"',
+              'alias bt_xh_5 "xhair_enable 0; echo Pritsel: KLASSIK; alias bt_xh bt_xh_1"',
+              'alias bt_xh "bt_xh_1"',
+              "// FPS / ping ko'rsatish",
+              'alias bt_fps_on "net_graph 1; echo FPS/ping: YONIQ; alias bt_fps bt_fps_off"',
+              'alias bt_fps_off "net_graph 0; echo FPS/ping: OCHIQ; alias bt_fps bt_fps_on"',
+              'alias bt_fps "bt_fps_on"',
+              '// ultra yengil grafika (kuchsiz telefonlar uchun)',
+              'alias bt_lite_on "gl_texture_lodbias 2; r_dynamic 0; r_decals 0; mp_decals 0; cl_minmodels 1; cl_himodels 0; r_lighting_extended 0; echo Ultra yengil: YONIQ; alias bt_lite bt_lite_off"',
+              'alias bt_lite_off "gl_texture_lodbias 0; r_dynamic 1; r_decals 100; mp_decals 50; cl_minmodels 0; r_lighting_extended 1; echo Ultra yengil: OCHIQ; alias bt_lite bt_lite_on"',
+              'alias bt_lite "bt_lite_on"',
+              "// tugma o'lchami: katta / kichik / oddiy",
+              'alias bt_size_1 "exec touch_presets/boosttop_pro_big.cfg; echo Tugmalar: KATTA; alias bt_size bt_size_2"',
+              'alias bt_size_2 "exec touch_presets/boosttop_pro_small.cfg; echo Tugmalar: KICHIK; alias bt_size bt_size_3"',
+              'alias bt_size_3 "exec touch_presets/boosttop_pro.cfg; echo Tugmalar: ODDIY; alias bt_size bt_size_1"',
+              'alias bt_size "bt_size_1"',
           ]) + '\n')
           # ilova build raqami (avtomatik yangilanish uchun)
           os.makedirs(os.path.join(app, 'engine_assets'), exist_ok=True)
@@ -329,7 +353,7 @@ jobs:
               'touch_addbutton "jump" "touch/gfx/jump" "+jump" 0.890000 0.200000 0.990000 0.380000 255 255 255 160 0 1',
               'touch_addbutton "duck" "touch/gfx/duck" "+duck" 0.900000 0.760000 0.990000 0.920000 255 255 255 160 512 1',
               'touch_addbutton "use" "touch/gfx/use" "+use" 0.900000 0.420000 0.980000 0.560000 255 255 255 140 0 1',
-              'touch_addbutton "walk" "touch/gfx/walk" "+speed" 0.180000 0.220000 0.250000 0.350000 255 255 255 130 0 1',
+              'touch_addbutton "walk" "touch/gfx/walk" "+speed" 0.180000 0.250000 0.250000 0.380000 255 255 255 130 0 1',
               '// qurollar',
               'touch_addbutton "w1" "touch/gfx/w_rifle" "slot1" 0.300000 0.000000 0.360000 0.107000 255 255 255 150 0 1',
               'touch_addbutton "w2" "touch/gfx/w_pistol" "slot2" 0.370000 0.000000 0.430000 0.107000 255 255 255 150 0 1',
@@ -355,6 +379,22 @@ jobs:
               'touch_addbutton "fb" "touch/gfx/w_grenade" "weapon_flashbang" 0.745000 0.130000 0.805000 0.237000 255 255 255 160 0 1',
               'touch_addbutton "sg" "touch/gfx/w_grenade" "weapon_smokegrenade" 0.810000 0.130000 0.870000 0.237000 160 160 160 160 0 1',
               'touch_addbutton "hand" "touch/gfx/cmdmenu" "bt_hand" 0.000000 0.130000 0.060000 0.237000 255 255 255 140 0 1',
+              "// ovozli chat va qo'shimcha panel",
+              'touch_addbutton "voice" "touch/gfx/voicechat" "+voicerecord" 0.230000 0.130000 0.290000 0.237000 120 255 120 160 0 1',
+              'touch_addbutton "more" "touch/gfx/hud_edit" "bt_more" 0.160000 0.130000 0.220000 0.237000 255 210 60 180 0 1',
+              "// o'lganda kuzatish: oldingi / keyingi o'yinchi",
+              'touch_addbutton "spec_prev" "touch/gfx/left" "follownext 1" 0.400000 0.860000 0.460000 0.967000 255 255 255 110 0 1',
+              'touch_addbutton "spec_next" "touch/gfx/right" "follownext 0" 0.540000 0.860000 0.600000 0.967000 255 255 255 110 0 1',
+              "// qo'shimcha panel (yashirin, sariq tugma ochadi)",
+              'touch_addbutton "x_xh" "touch/gfx/hud_edit" "bt_xh" 0.360000 0.300000 0.440000 0.440000 255 255 255 200 1 1',
+              'touch_addbutton "x_fps" "touch/gfx/score" "bt_fps" 0.460000 0.300000 0.540000 0.440000 255 255 255 200 1 1',
+              'touch_addbutton "x_lite" "touch/gfx/minus" "bt_lite" 0.560000 0.300000 0.640000 0.440000 255 255 255 200 1 1',
+              'touch_addbutton "x_r1" "touch/gfx/radio1" "followme" 0.360000 0.460000 0.440000 0.600000 120 255 120 200 1 1',
+              'touch_addbutton "x_r2" "touch/gfx/radio2" "enemyspot" 0.460000 0.460000 0.540000 0.600000 255 90 90 200 1 1',
+              'touch_addbutton "x_r3" "touch/gfx/radio3" "needbackup" 0.560000 0.460000 0.640000 0.600000 255 210 60 200 1 1',
+              'touch_addbutton "x_r4" "touch/gfx/radio" "sectorclear" 0.360000 0.620000 0.440000 0.760000 120 200 255 200 1 1',
+              'touch_addbutton "x_size" "touch/gfx/dpad" "bt_size" 0.460000 0.620000 0.540000 0.760000 255 255 255 200 1 1',
+              'touch_addbutton "x_close" "touch/gfx/exit" "bt_more" 0.560000 0.620000 0.640000 0.760000 255 255 255 200 1 1',
               'touch_addbutton "change_team" "touch/gfx/change_team" "chooseteam" 0.930000 0.000000 0.990000 0.107000 255 255 255 130 0 1',
           ]) + '\n')
           # chapaqaylar uchun oyna aksi
@@ -398,7 +438,7 @@ jobs:
               'touch_addbutton "jump" "touch/gfx/jump" "+jump" 0.010000 0.200000 0.110000 0.380000 255 255 255 160 0 1',
               'touch_addbutton "duck" "touch/gfx/duck" "+duck" 0.010000 0.760000 0.100000 0.920000 255 255 255 160 512 1',
               'touch_addbutton "use" "touch/gfx/use" "+use" 0.020000 0.420000 0.100000 0.560000 255 255 255 140 0 1',
-              'touch_addbutton "walk" "touch/gfx/walk" "+speed" 0.750000 0.220000 0.820000 0.350000 255 255 255 130 0 1',
+              'touch_addbutton "walk" "touch/gfx/walk" "+speed" 0.750000 0.250000 0.820000 0.380000 255 255 255 130 0 1',
               '// qurollar',
               'touch_addbutton "w1" "touch/gfx/w_rifle" "slot1" 0.640000 0.000000 0.700000 0.107000 255 255 255 150 0 1',
               'touch_addbutton "w2" "touch/gfx/w_pistol" "slot2" 0.570000 0.000000 0.630000 0.107000 255 255 255 150 0 1',
@@ -424,8 +464,40 @@ jobs:
               'touch_addbutton "fb" "touch/gfx/w_grenade" "weapon_flashbang" 0.195000 0.130000 0.255000 0.237000 255 255 255 160 0 1',
               'touch_addbutton "sg" "touch/gfx/w_grenade" "weapon_smokegrenade" 0.130000 0.130000 0.190000 0.237000 160 160 160 160 0 1',
               'touch_addbutton "hand" "touch/gfx/cmdmenu" "bt_hand" 0.940000 0.130000 1.000000 0.237000 255 255 255 140 0 1',
+              "// ovozli chat va qo'shimcha panel",
+              'touch_addbutton "voice" "touch/gfx/voicechat" "+voicerecord" 0.710000 0.130000 0.770000 0.237000 120 255 120 160 0 1',
+              'touch_addbutton "more" "touch/gfx/hud_edit" "bt_more" 0.780000 0.130000 0.840000 0.237000 255 210 60 180 0 1',
+              "// o'lganda kuzatish: oldingi / keyingi o'yinchi",
+              'touch_addbutton "spec_prev" "touch/gfx/left" "follownext 1" 0.540000 0.860000 0.600000 0.967000 255 255 255 110 0 1',
+              'touch_addbutton "spec_next" "touch/gfx/right" "follownext 0" 0.400000 0.860000 0.460000 0.967000 255 255 255 110 0 1',
+              "// qo'shimcha panel (yashirin, sariq tugma ochadi)",
+              'touch_addbutton "x_xh" "touch/gfx/hud_edit" "bt_xh" 0.560000 0.300000 0.640000 0.440000 255 255 255 200 1 1',
+              'touch_addbutton "x_fps" "touch/gfx/score" "bt_fps" 0.460000 0.300000 0.540000 0.440000 255 255 255 200 1 1',
+              'touch_addbutton "x_lite" "touch/gfx/minus" "bt_lite" 0.360000 0.300000 0.440000 0.440000 255 255 255 200 1 1',
+              'touch_addbutton "x_r1" "touch/gfx/radio1" "followme" 0.560000 0.460000 0.640000 0.600000 120 255 120 200 1 1',
+              'touch_addbutton "x_r2" "touch/gfx/radio2" "enemyspot" 0.460000 0.460000 0.540000 0.600000 255 90 90 200 1 1',
+              'touch_addbutton "x_r3" "touch/gfx/radio3" "needbackup" 0.360000 0.460000 0.440000 0.600000 255 210 60 200 1 1',
+              'touch_addbutton "x_r4" "touch/gfx/radio" "sectorclear" 0.560000 0.620000 0.640000 0.760000 120 200 255 200 1 1',
+              'touch_addbutton "x_size" "touch/gfx/dpad" "bt_size" 0.460000 0.620000 0.540000 0.760000 255 255 255 200 1 1',
+              'touch_addbutton "x_close" "touch/gfx/exit" "bt_more" 0.360000 0.620000 0.440000 0.760000 255 255 255 200 1 1',
               'touch_addbutton "change_team" "touch/gfx/change_team" "chooseteam" 0.010000 0.000000 0.070000 0.107000 255 255 255 130 0 1',
           ]) + '\n')
+          # boost-top: tugma o'lchami - KATTA va KICHIK variantlar (markazidan kattalashtiriladi)
+          import re as _re
+          _src = open(os.path.join(ea, 'touch_presets', 'boosttop_pro.cfg'), encoding='utf-8').read().split('\n')
+          for _nm, _k in (('big', 1.2), ('small', 0.85)):
+              _out = []
+              for _ln in _src:
+                  _m = _re.match(r'^(touch_addbutton "[^"]*" "[^"]*" "([^"]*)" )([-\d.]+) ([-\d.]+) ([-\d.]+) ([-\d.]+)( .*)$', _ln)
+                  if _m and _m.group(2) not in ('_move', '_look'):
+                      x1, y1, x2, y2 = [float(_m.group(i)) for i in (3, 4, 5, 6)]
+                      cx, cy, hw, hh = (x1 + x2) / 2, (y1 + y2) / 2, (x2 - x1) * _k / 2, (y2 - y1) * _k / 2
+                      cx = min(max(cx, hw), 1 - hw); cy = min(max(cy, hh), 1 - hh)
+                      _ln = '%s%.6f %.6f %.6f %.6f%s' % (_m.group(1), cx - hw, cy - hh, cx + hw, cy + hh, _m.group(7))
+                  _ln = _ln.replace('touch_profiles/boosttop_pro.cfg', 'touch_profiles/boosttop_pro_%s.cfg' % _nm)
+                  _out.append(_ln)
+              open(os.path.join(ea, 'touch_presets', 'boosttop_pro_%s.cfg' % _nm), 'w', encoding='utf-8').write('\n'.join(_out))
+              print('preset', _nm)
           # boost-top: dushmanni o'ldirganda telefon yengil titraydi
           p = 'cl_dll/death.cpp'
           s = open(p, encoding='utf-8').read()
