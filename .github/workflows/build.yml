@@ -143,7 +143,8 @@ jobs:
           """)
           must("""	touch.configchanged = false;
           	touch.config_loaded = true;
-          }""", """	touch.configchanged = bt_new; // yangi joylashuv faylga saqlansin
+          }""", """	Touch_HideButtons( "x_*", true, true ); // boost-top: qo'shimcha panel har doim yopiq boshlanadi
+          	touch.configchanged = bt_new; // yangi joylashuv faylga saqlansin
           	touch.config_loaded = true;
           }""")
           open(p, 'w', encoding='utf-8').write(s)
@@ -253,6 +254,10 @@ jobs:
               'cl_timeout "25"',
               'cl_autoreconnect "1"',
               'vibration_enable "1"',
+              "// #34 dagi grafika buzilishini tuzatish (video.cfg da qolib ketgan qiymatlar)",
+              'gl_texture_lodbias "0"',
+              'r_lighting_extended "1"',
+              'net_graph "0"',
               "// sezgirlik: Sekin / O'rtacha / Tez",
               'alias bt_sens_1 "touch_yaw 40; touch_pitch 32; gyro_yaw 0.9; gyro_pitch 0.75; echo Sezgirlik: SEKIN; alias bt_sens bt_sens_2"',
               'alias bt_sens_2 "touch_yaw 55; touch_pitch 45; gyro_yaw 1.2; gyro_pitch 1.0; echo Sezgirlik: ORTACHA; alias bt_sens bt_sens_3"',
@@ -282,8 +287,8 @@ jobs:
               'alias bt_fps_off "net_graph 0; echo FPS/ping: OCHIQ; alias bt_fps bt_fps_on"',
               'alias bt_fps "bt_fps_on"',
               '// ultra yengil grafika (kuchsiz telefonlar uchun)',
-              'alias bt_lite_on "gl_texture_lodbias 2; r_dynamic 0; r_decals 0; mp_decals 0; cl_minmodels 1; cl_himodels 0; r_lighting_extended 0; echo Ultra yengil: YONIQ; alias bt_lite bt_lite_off"',
-              'alias bt_lite_off "gl_texture_lodbias 0; r_dynamic 1; r_decals 100; mp_decals 50; cl_minmodels 0; r_lighting_extended 1; echo Ultra yengil: OCHIQ; alias bt_lite bt_lite_on"',
+              'alias bt_lite_on "r_dynamic 0; r_decals 0; mp_decals 0; cl_minmodels 1; cl_himodels 0; echo Ultra yengil: YONIQ; alias bt_lite bt_lite_off"',
+              'alias bt_lite_off "r_dynamic 1; r_decals 100; mp_decals 50; cl_minmodels 0; echo Ultra yengil: OCHIQ; alias bt_lite bt_lite_on"',
               'alias bt_lite "bt_lite_on"',
               "// tugma o'lchami: katta / kichik / oddiy",
               'alias bt_size_1 "exec touch_presets/boosttop_pro_big.cfg; echo Tugmalar: KATTA; alias bt_size bt_size_2"',
@@ -386,14 +391,14 @@ jobs:
               'touch_addbutton "spec_prev" "touch/gfx/left" "follownext 1" 0.400000 0.860000 0.460000 0.967000 255 255 255 110 0 1',
               'touch_addbutton "spec_next" "touch/gfx/right" "follownext 0" 0.540000 0.860000 0.600000 0.967000 255 255 255 110 0 1',
               "// qo'shimcha panel (yashirin, sariq tugma ochadi)",
-              'touch_addbutton "x_xh" "touch/gfx/hud_edit" "bt_xh" 0.360000 0.300000 0.440000 0.440000 255 255 255 200 1 1',
-              'touch_addbutton "x_fps" "touch/gfx/score" "bt_fps" 0.460000 0.300000 0.540000 0.440000 255 255 255 200 1 1',
-              'touch_addbutton "x_lite" "touch/gfx/minus" "bt_lite" 0.560000 0.300000 0.640000 0.440000 255 255 255 200 1 1',
-              'touch_addbutton "x_r1" "touch/gfx/radio1" "followme" 0.360000 0.460000 0.440000 0.600000 120 255 120 200 1 1',
-              'touch_addbutton "x_r2" "touch/gfx/radio2" "enemyspot" 0.460000 0.460000 0.540000 0.600000 255 90 90 200 1 1',
-              'touch_addbutton "x_r3" "touch/gfx/radio3" "needbackup" 0.560000 0.460000 0.640000 0.600000 255 210 60 200 1 1',
-              'touch_addbutton "x_r4" "touch/gfx/radio" "sectorclear" 0.360000 0.620000 0.440000 0.760000 120 200 255 200 1 1',
-              'touch_addbutton "x_size" "touch/gfx/dpad" "bt_size" 0.460000 0.620000 0.540000 0.760000 255 255 255 200 1 1',
+              'touch_addbutton "x_xh" "touch/gfx/hud_edit" "bt_xh; bt_more_off" 0.360000 0.300000 0.440000 0.440000 255 255 255 200 1 1',
+              'touch_addbutton "x_fps" "touch/gfx/score" "bt_fps; bt_more_off" 0.460000 0.300000 0.540000 0.440000 255 255 255 200 1 1',
+              'touch_addbutton "x_lite" "touch/gfx/minus" "bt_lite; bt_more_off" 0.560000 0.300000 0.640000 0.440000 255 255 255 200 1 1',
+              'touch_addbutton "x_r1" "touch/gfx/radio1" "followme; bt_more_off" 0.360000 0.460000 0.440000 0.600000 120 255 120 200 1 1',
+              'touch_addbutton "x_r2" "touch/gfx/radio2" "enemyspot; bt_more_off" 0.460000 0.460000 0.540000 0.600000 255 90 90 200 1 1',
+              'touch_addbutton "x_r3" "touch/gfx/radio3" "needbackup; bt_more_off" 0.560000 0.460000 0.640000 0.600000 255 210 60 200 1 1',
+              'touch_addbutton "x_r4" "touch/gfx/radio" "sectorclear; bt_more_off" 0.360000 0.620000 0.440000 0.760000 120 200 255 200 1 1',
+              'touch_addbutton "x_size" "touch/gfx/dpad" "bt_size; bt_more_off" 0.460000 0.620000 0.540000 0.760000 255 255 255 200 1 1',
               'touch_addbutton "x_close" "touch/gfx/exit" "bt_more" 0.560000 0.620000 0.640000 0.760000 255 255 255 200 1 1',
               'touch_addbutton "change_team" "touch/gfx/change_team" "chooseteam" 0.930000 0.000000 0.990000 0.107000 255 255 255 130 0 1',
           ]) + '\n')
@@ -471,14 +476,14 @@ jobs:
               'touch_addbutton "spec_prev" "touch/gfx/left" "follownext 1" 0.540000 0.860000 0.600000 0.967000 255 255 255 110 0 1',
               'touch_addbutton "spec_next" "touch/gfx/right" "follownext 0" 0.400000 0.860000 0.460000 0.967000 255 255 255 110 0 1',
               "// qo'shimcha panel (yashirin, sariq tugma ochadi)",
-              'touch_addbutton "x_xh" "touch/gfx/hud_edit" "bt_xh" 0.560000 0.300000 0.640000 0.440000 255 255 255 200 1 1',
-              'touch_addbutton "x_fps" "touch/gfx/score" "bt_fps" 0.460000 0.300000 0.540000 0.440000 255 255 255 200 1 1',
-              'touch_addbutton "x_lite" "touch/gfx/minus" "bt_lite" 0.360000 0.300000 0.440000 0.440000 255 255 255 200 1 1',
-              'touch_addbutton "x_r1" "touch/gfx/radio1" "followme" 0.560000 0.460000 0.640000 0.600000 120 255 120 200 1 1',
-              'touch_addbutton "x_r2" "touch/gfx/radio2" "enemyspot" 0.460000 0.460000 0.540000 0.600000 255 90 90 200 1 1',
-              'touch_addbutton "x_r3" "touch/gfx/radio3" "needbackup" 0.360000 0.460000 0.440000 0.600000 255 210 60 200 1 1',
-              'touch_addbutton "x_r4" "touch/gfx/radio" "sectorclear" 0.560000 0.620000 0.640000 0.760000 120 200 255 200 1 1',
-              'touch_addbutton "x_size" "touch/gfx/dpad" "bt_size" 0.460000 0.620000 0.540000 0.760000 255 255 255 200 1 1',
+              'touch_addbutton "x_xh" "touch/gfx/hud_edit" "bt_xh; bt_more_off" 0.560000 0.300000 0.640000 0.440000 255 255 255 200 1 1',
+              'touch_addbutton "x_fps" "touch/gfx/score" "bt_fps; bt_more_off" 0.460000 0.300000 0.540000 0.440000 255 255 255 200 1 1',
+              'touch_addbutton "x_lite" "touch/gfx/minus" "bt_lite; bt_more_off" 0.360000 0.300000 0.440000 0.440000 255 255 255 200 1 1',
+              'touch_addbutton "x_r1" "touch/gfx/radio1" "followme; bt_more_off" 0.560000 0.460000 0.640000 0.600000 120 255 120 200 1 1',
+              'touch_addbutton "x_r2" "touch/gfx/radio2" "enemyspot; bt_more_off" 0.460000 0.460000 0.540000 0.600000 255 90 90 200 1 1',
+              'touch_addbutton "x_r3" "touch/gfx/radio3" "needbackup; bt_more_off" 0.360000 0.460000 0.440000 0.600000 255 210 60 200 1 1',
+              'touch_addbutton "x_r4" "touch/gfx/radio" "sectorclear; bt_more_off" 0.560000 0.620000 0.640000 0.760000 120 200 255 200 1 1',
+              'touch_addbutton "x_size" "touch/gfx/dpad" "bt_size; bt_more_off" 0.460000 0.620000 0.540000 0.760000 255 255 255 200 1 1',
               'touch_addbutton "x_close" "touch/gfx/exit" "bt_more" 0.360000 0.620000 0.440000 0.760000 255 255 255 200 1 1',
               'touch_addbutton "change_team" "touch/gfx/change_team" "chooseteam" 0.010000 0.000000 0.070000 0.107000 255 255 255 130 0 1',
           ]) + '\n')
