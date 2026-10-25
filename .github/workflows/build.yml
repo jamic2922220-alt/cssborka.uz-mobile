@@ -60,6 +60,63 @@ jobs:
           open(p, 'w', encoding='utf-8').write(s)
           print('in_gyro.c patched')
           PY
+      - name: Patch touch (otish tugmasi bilan nishonga olish)
+        run: |
+          python3 - <<'PY'
+          p = 'engine/client/input/in_touch.c'
+          s = open(p, encoding='utf-8').read()
+          def must(a, b):
+              global s
+              assert s.count(a) == 1, ('not unique/missing', a[:80])
+              s = s.replace(a, b, 1)
+          must('static CVAR_DEFINE_AUTO( touch_precise_amount, "0.5", FCVAR_FILTERABLE, "sensitivity multiplier for precise-look" );',
+               'static CVAR_DEFINE_AUTO( touch_precise_amount, "0.5", FCVAR_FILTERABLE, "sensitivity multiplier for precise-look" );\n'
+               'static CVAR_DEFINE_AUTO( touch_aimfire, "1", FCVAR_ARCHIVE | FCVAR_FILTERABLE, "aim with the finger that holds +attack button" );')
+          must('\tCvar_RegisterVariable( &touch_precise_amount );',
+               '\tCvar_RegisterVariable( &touch_precise_amount );\n\tCvar_RegisterVariable( &touch_aimfire );')
+          must('''				// increase precision
+          				if( FBitSet( button->flags, TOUCH_FL_PRECISION ))
+          					touch.precision = true;
+
+          				result = true;
+          			}
+          			else if( button->type == touch_wheel )''',
+          '''				// increase precision
+          				if( FBitSet( button->flags, TOUCH_FL_PRECISION ))
+          					touch.precision = true;
+
+          				result = true;
+
+          				// boost-top: otish tugmasini bosib turgan barmoq bilan nishonga olish
+          				if( touch_aimfire.value && !Q_strncmp( button->command, "+attack", 7 ) && touch.move_finger != fingerID )
+          				{
+          					if( touch.look_finger == -1 )
+          						touch.look_finger = fingerID;
+          					return true; // ostidagi yurish zonasi bu barmoqni olib qo'ymasin
+          				}
+          			}
+          			else if( button->type == touch_wheel )''')
+          must('''				// disable precision mode
+          				if( FBitSet( button->flags, TOUCH_FL_PRECISION ))
+          					touch.precision = false;
+
+          				result = true;
+          			}
+          			// handle wheel end''',
+          '''				// disable precision mode
+          				if( FBitSet( button->flags, TOUCH_FL_PRECISION ))
+          					touch.precision = false;
+
+          				// boost-top: otish tugmasi qo'yib yuborilsa nishon ham bo'shaydi
+          				if( touch.look_finger == fingerID && !Q_strncmp( button->command, "+attack", 7 ))
+          					touch.look_finger = -1;
+
+          				result = true;
+          			}
+          			// handle wheel end''')
+          open(p, 'w', encoding='utf-8').write(s)
+          print('in_touch.c patched (aim while firing)')
+          PY
       - name: Build engine
         run: bash scripts/gha/build_android.sh
       - name: Collect engine parts
@@ -124,6 +181,23 @@ jobs:
           assert 'CrashReports' not in s, 'CrashReports qoldi'
           open(p, 'w', encoding='utf-8').write(s)
 
+          # boost-top: telefon uchun silliq boshqaruv va yengil grafika (har ishga tushganda)
+          ud = os.path.join(app, 'engine_assets', 'userconfig.d')
+          os.makedirs(ud, exist_ok=True)
+          open(os.path.join(ud, 'zz_boosttop_mobile.cfg'), 'w', encoding='utf-8').write('\n'.join([
+              '// boost-top: telefon uchun',
+              'touch_aimfire "1"',
+              'touch_nonlinear_look "1"',
+              'touch_pow_factor "1.25"',
+              'touch_pow_mult "300"',
+              'touch_exp_mult "0"',
+              'cl_weather "0"',
+              'cl_gunsmoke "0"',
+              'cl_shadows "0"',
+              'cl_corpsestay "0"',
+              'r_decals "100"',
+              'mp_decals "50"',
+          ]) + '\n')
           # ilova build raqami (avtomatik yangilanish uchun)
           os.makedirs(os.path.join(app, 'engine_assets'), exist_ok=True)
           open(os.path.join(app, 'engine_assets', 'bt_build.txt'), 'w').write(os.environ.get('GITHUB_RUN_NUMBER', '0'))
