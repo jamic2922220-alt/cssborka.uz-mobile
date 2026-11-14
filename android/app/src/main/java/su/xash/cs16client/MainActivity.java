@@ -114,16 +114,11 @@ public class MainActivity extends Activity {
                 {"neterr", "Internetga ulanib bo'lmadi. Yangilash tugmasini bosing.", "Нет соединения. Нажмите «Обновить».", "No connection. Tap Refresh."},
                 {"sitedown", "Serverlar ro'yxati saytdan kelmadi - oxirgi ro'yxat ko'rsatilmoqda. O'ynash mumkin.", "Сайт со списком серверов недоступен - показан последний список. Играть можно.", "Server list site is unreachable - showing the last list. You can still play."},
                 {"empty", "Hozircha serverlar yo'q", "Пока нет серверов", "No servers yet"},
-                {"offline", "OFFLINE", "OFFLINE", "OFFLINE"},
+                {"offline", "O'CHIQ", "ОФЛАЙН", "OFFLINE"},
                 {"setup", "O'yinni sozlash (bir marta)", "Настройка игры (один раз)", "Game setup (one time)"},
-                {"s1", "1. Xash3D dvijokini o'rnating", "1. Установите движок Xash3D", "1. Install the Xash3D engine"},
-                {"s1b", "YUKLAB OLISH", "СКАЧАТЬ", "DOWNLOAD"},
-                {"s2", "2. Dvijokni bir marta oching va fayllarga ruxsat bering, keyin shu yerga qayting", "2. Откройте движок один раз и разрешите доступ к файлам, затем вернитесь сюда", "2. Open the engine once, allow file access, then come back"},
-                {"s2b", "DVIJOKNI OCHISH", "ОТКРЫТЬ ДВИЖОК", "OPEN ENGINE"},
                 {"s3", "O'yin fayllarini yuklab oling (bir marta)", "Скачайте файлы игры (один раз)", "Download game files (one time)"},
                 {"s3b", "YUKLASH", "СКАЧАТЬ", "DOWNLOAD"},
                 {"done", "✓ Tayyor", "✓ Готово", "✓ Done"},
-                {"perm", "Fayllarni saqlash uchun ruxsat bering", "Разрешите доступ к файлам для сохранения", "Allow file access to save files"},
                 {"dlwarn", "Taxminan %d MB yuklanadi. Wi-Fi tavsiya etiladi. Davom etamizmi?", "Будет загружено около %d МБ. Рекомендуется Wi-Fi. Продолжить?", "About %d MB will be downloaded. Wi-Fi recommended. Continue?"},
                 {"yes", "Ha", "Да", "Yes"},
                 {"no", "Yo'q", "Нет", "No"},
@@ -133,7 +128,6 @@ public class MainActivity extends Activity {
                 {"needsetup", "Avval o'yinni sozlang (yuqoridagi qadamlar)", "Сначала настройте игру (шаги выше)", "Set up the game first (steps above)"},
                 {"upd", "Yangi versiya chiqdi!", "Вышла новая версия!", "New version available!"},
                 {"updb", "YANGILASH", "ОБНОВИТЬ", "UPDATE"},
-                {"updhint", "APK yuklanadi - keyin uni ochib o'rnating. O'yin fayllari saqlanib qoladi.", "APK скачается - откройте его и установите. Файлы игры сохранятся.", "The APK will download - open it to install. Game files are kept."},
                 {"nick", "O'yindagi nik", "Ник в игре", "In-game nickname"},
                 {"gfx", "Grafika", "Графика", "Graphics"},
                 {"gfx_high", "Yuqori", "Высокая", "High"},
@@ -141,7 +135,6 @@ public class MainActivity extends Activity {
                 {"gfx_low", "Past (tez)", "Низкая (быстро)", "Low (fast)"},
                 {"fps", "FPS ni ko'rsatish", "Показывать FPS", "Show FPS"},
                 {"favs", "⭐ Mening serverlarim", "⭐ Мои серверы", "⭐ My servers"},
-                {"players", "O'yinchilar", "Игроки", "Players"},
                 {"pl_nick", "Nik", "Ник", "Name"},
                 {"pl_score", "Frag", "Фраги", "Score"},
                 {"pl_time", "Vaqt", "Время", "Time"},
@@ -149,7 +142,6 @@ public class MainActivity extends Activity {
                 {"pl_err", "Server javob bermadi", "Сервер не ответил", "Server did not respond"},
                 {"close", "Yopish", "Закрыть", "Close"},
                 {"updperm", "Ruxsat bering: \"Shu manbadan o'rnatish\" ni yoqing, keyin qaytib YANGILASH ni bosing", "Разрешите установку из этого источника, затем вернитесь и нажмите ОБНОВИТЬ", "Allow installs from this source, then come back and tap UPDATE"},
-                {"updinst", "O'rnatilmoqda... Ilova yopilsa - qayta oching, yangi versiya tayyor bo'ladi.", "Устанавливается... Если приложение закроется - откройте его снова, новая версия будет готова.", "Installing... If the app closes, open it again - the new version will be ready."},
                 {"updwarn", "Yangi versiya yuklanadi. Keyin telefonning O'RNATISH oynasi chiqadi: \"Yangilash/O'rnatish\" ni, tugagach \"Ochish\" ni bosing. O'yin fayllari saqlanib qoladi.", "Новая версия скачается. Затем откроется окно УСТАНОВКИ телефона: нажмите \"Обновить/Установить\", а после - \"Открыть\". Файлы игры сохранятся.", "The new version will download. Then your phone's INSTALL screen opens: tap \"Update/Install\", then \"Open\". Game files are kept."},
                 {"updok", "Davom etish", "Продолжить", "Continue"},
                 {"upderr", "Yangilab bo'lmadi", "Не удалось обновить", "Update failed"},
@@ -157,7 +149,7 @@ public class MainActivity extends Activity {
                 {"updbrowser", "Brauzer orqali", "Через браузер", "Via browser"},
                 {"settings", "Sozlamalar", "Настройки", "Settings"},
                 {"lang", "Til", "Язык", "Language"},
-                {"sens", "Sichqoncha / ekran sezgirligi", "Чувствительность", "Sensitivity"},
+                {"sens", "Ekran (nishon) sezgirligi", "Чувствительность экрана (прицел)", "Screen (aim) sensitivity"},
                 {"xsize", "Pritsel o'lchami", "Размер прицела", "Crosshair size"},
                 {"xcolor", "Pritsel rangi", "Цвет прицела", "Crosshair color"},
                 {"xthick", "Pritsel qalinligi", "Толщина прицела", "Crosshair thickness"},
@@ -198,6 +190,28 @@ public class MainActivity extends Activity {
                 {"acc_out", "Chiqish", "Выйти", "Sign out"},
                 {"acc_err", "Internet yo'q yoki sayt javob bermadi", "Нет интернета или сайт не ответил", "No internet or the site did not respond"},
                 {"acc_xp", "O'yindagi vaqt uchun XP kompyuterdagidek yoziladi", "XP за время в игре начисляется как на компьютере", "XP for play time is counted like on PC"},
+                {"acc_tg", "Telegram orqali", "Через Telegram", "Via Telegram"},
+                {"acc_tgwait", "Telegram ochildi - «Start» ni bosing, keyin shu yerga qayting", "Открылся Telegram - нажмите «Start» и вернитесь сюда", "Telegram opened - tap «Start», then come back here"},
+                {"acc_tgok", "Telegram orqali kirildi", "Вход через Telegram выполнен", "Signed in via Telegram"},
+                {"acc_tgexp", "Telegram'dan tasdiq kelmadi. Qayta urinib ko'ring", "Подтверждение из Telegram не пришло. Попробуйте ещё раз", "No confirmation from Telegram. Try again"},
+                {"acc_prof", "Profil", "Профиль", "Profile"},
+                {"acc_pic", "Profil rasmini tanlash", "Выбрать фото профиля", "Choose profile picture"},
+                {"acc_picdel", "Rasmni o'chirish", "Удалить фото", "Remove picture"},
+                {"acc_name", "Ismni o'zgartirish", "Изменить имя", "Change name"},
+                {"acc_nc", "Nik rangi", "Цвет ника", "Nickname color"},
+                {"acc_ncnone", "Oddiy (oq)", "Обычный (белый)", "Default (white)"},
+                {"acc_saved", "Saqlandi - kompyuterda ham ko'rinadi", "Сохранено - видно и на компьютере", "Saved - also visible on PC"},
+                {"nc_red", "Qizil", "Красный", "Red"},
+                {"nc_orange", "To'q sariq", "Оранжевый", "Orange"},
+                {"nc_yellow", "Sariq", "Жёлтый", "Yellow"},
+                {"nc_green", "Yashil", "Зелёный", "Green"},
+                {"nc_cyan", "Moviy", "Голубой", "Cyan"},
+                {"nc_blue", "Ko'k", "Синий", "Blue"},
+                {"nc_purple", "Binafsha", "Фиолетовый", "Purple"},
+                {"nc_pink", "Pushti", "Розовый", "Pink"},
+                {"off_t", "Internet yo'qmi? Muammo emas", "Нет интернета? Не проблема", "No internet? No problem"},
+                {"off_s", "Botlar bilan o'yna - internet kerak emas", "Играйте с ботами - интернет не нужен", "Play with bots - no internet needed"},
+                {"off_b", "Botlar bilan", "С ботами", "With bots"},
         };
         int col = "ru".equals(lang) ? 2 : ("en".equals(lang) ? 3 : 1);
         for (String[] row : tr) if (row[0].equals(key)) return row[col];
@@ -489,7 +503,39 @@ public class MainActivity extends Activity {
     }
 
     /** Sozlamalarni o'yin konfiguratsiyasiga yozadi (cstrike/boosttop_settings.cfg va config.cfg). */
+    /** Tarjima tuzatishlari (o'yin arxividagi fayllar ustidan, arxivni qayta yuklamasdan; versiya o'zgarganda yoziladi):
+     *  o'zbekcha - ~230 qator inglizcha qolgan edi (jamoa va qurol tavsiflari, yordamchi maslahatlar, radio);
+     *  ruscha - HUD (Деньги, HP, Набор), "Покинуть игру" va MOTD oynasi tugmalari faylda umuman yo'q edi. */
+    private static final int LOC_VER = 1;
+    private static final String[][] LOC_FILES = {
+            {"xc_loc/cstrike_uzbek.txt", "cstrike/resource/cstrike_uzbek.txt"},
+            {"xc_loc/cstrike_russian.txt", "cstrike/resource/cstrike_russian.txt"},
+            {"xc_loc/gameui_russian.txt", "valve/resource/gameui_russian.txt"},
+            {"xc_loc/valve_russian.txt", "valve/resource/valve_russian.txt"},
+    };
+    private void installLoc() {
+        if (prefs().getInt("loc_v", 0) == LOC_VER) return;
+        boolean all = true;
+        for (String[] f : LOC_FILES) {
+            try {
+                File dst = new File(baseDir(), f[1]);
+                if (!dst.getParentFile().exists()) { all = false; continue; }
+                InputStream in = getAssets().open(f[0]);
+                FileOutputStream fo = new FileOutputStream(dst);
+                byte[] buf = new byte[16384];
+                int n;
+                while ((n = in.read(buf)) > 0) fo.write(buf, 0, n);
+                fo.close();
+                in.close();
+            } catch (Exception e) {
+                all = false;
+            }
+        }
+        if (all) prefs().edit().putInt("loc_v", LOC_VER).apply();
+    }
+
     private void writeSettings() {
+        installLoc();
         try {
             SharedPreferences p = prefs();
             int c = p.getInt("xcolor", XCOLORS[0]);
@@ -1110,6 +1156,265 @@ public class MainActivity extends Activity {
         }).start();
     }
 
+    private static final String XC_SITE = "https://mmb.boost-top.com/";
+    private static final int PICK_AV = 7301;
+    private volatile Bitmap accAv = null;
+    private volatile String accAvKey = "";
+    private volatile boolean tgPolling = false;
+    private volatile boolean netDown = false;
+
+    /** Nik rangi (menyudagi nomlar) -> ekrandagi rang. */
+    private static int ncColor(String nc) {
+        if (nc == null) return C_TEXT;
+        switch (nc) {
+            case "red": return 0xFFFF4D4D;
+            case "orange": return 0xFFFF9A3C;
+            case "yellow": return 0xFFFFD93C;
+            case "green": return 0xFF4CD964;
+            case "cyan": return 0xFF3CD6FF;
+            case "blue": return 0xFF4C8DFF;
+            case "purple": return 0xFFA66BFF;
+            case "pink": return 0xFFFF6BC8;
+            case "gold": return 0xFFFFC83C;
+            case "neon": return 0xFF39FF14;
+            case "ice": return 0xFFA8E6FF;
+            case "toxic": return 0xFF9DFF3C;
+            case "rainbow": return 0xFFFF9A3C;
+            default: return C_TEXT;
+        }
+    }
+
+    /** Profil rasmi (saytdan, kesh bilan). */
+    private void accLoadAv(final String rel) {
+        if (rel == null || rel.length() == 0) { accAv = null; accAvKey = ""; return; }
+        if (rel.equals(accAvKey)) return;
+        accAvKey = rel;
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    HttpURLConnection c = (HttpURLConnection) new URL(XC_SITE + rel).openConnection();
+                    c.setConnectTimeout(8000);
+                    c.setReadTimeout(10000);
+                    Bitmap b = BitmapFactory.decodeStream(c.getInputStream());
+                    c.disconnect();
+                    if (b != null) {
+                        accAv = b;
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                render();
+                            }
+                        });
+                    }
+                } catch (Exception ignored) {
+                    accAvKey = "";
+                }
+            }
+        }).start();
+    }
+
+    /** Profil: rasm, ism, nik rangi - kompyuterdagi menyu bilan umumiy. */
+    private void showProfile() {
+        final String[] items = {t("acc_pic"), t("acc_picdel"), t("acc_name"), t("acc_nc")};
+        new AlertDialog.Builder(this).setTitle(t("acc_prof")).setItems(items, new android.content.DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(android.content.DialogInterface d, int w) {
+                if (w == 0) {
+                    try {
+                        startActivityForResult(Intent.createChooser(new Intent(Intent.ACTION_GET_CONTENT).setType("image/*"), t("acc_pic")), PICK_AV);
+                    } catch (Exception e) {
+                        toastLike(String.valueOf(e.getMessage()));
+                    }
+                } else if (w == 1) accEdit("a=avatar&img=none");
+                else if (w == 2) showNameEdit();
+                else showNickColor();
+            }
+        }).setNegativeButton(t("cancel"), null).show();
+    }
+
+    private void showNameEdit() {
+        final EditText e = new EditText(this);
+        e.setSingleLine(true);
+        e.setText(accMe != null ? accMe.optString("name") : "");
+        LinearLayout box = new LinearLayout(this);
+        box.setPadding(dp(20), dp(8), dp(20), 0);
+        box.addView(e, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        new AlertDialog.Builder(this).setTitle(t("acc_name")).setView(box)
+                .setPositiveButton(t("save"), new android.content.DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(android.content.DialogInterface d, int w) {
+                        accEdit("a=profile&name=" + enc(e.getText().toString().trim()));
+                    }
+                }).setNegativeButton(t("cancel"), null).show();
+    }
+
+    private void showNickColor() {
+        final String[] keys = {"", "red", "orange", "yellow", "green", "cyan", "blue", "purple", "pink"};
+        String[] names = new String[keys.length];
+        for (int i = 0; i < keys.length; i++) names[i] = i == 0 ? t("acc_ncnone") : t("nc_" + keys[i]);
+        new AlertDialog.Builder(this).setTitle(t("acc_nc")).setItems(names, new android.content.DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(android.content.DialogInterface d, int w) {
+                accEdit("a=equip&nc=" + enc(keys[w]));
+            }
+        }).setNegativeButton(t("cancel"), null).show();
+    }
+
+    /** Profilni o'zgartirish so'rovi: javobdagi xabar (masalan "10-darajadan ochiladi") ko'rsatiladi. */
+    private void accEdit(final String params) {
+        final String tok = accToken();
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                String msg;
+                try {
+                    JSONObject r = xcPost(params + "&token=" + enc(tok));
+                    if (r.optBoolean("ok")) {
+                        if (r.optJSONObject("me") != null) accMe = r.optJSONObject("me");
+                        msg = t("acc_saved");
+                    } else msg = r.optString("msg", t("acc_err"));
+                } catch (Exception e) {
+                    msg = t("acc_err");
+                }
+                final String m = msg;
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        toastLike(m);
+                        accAvKey = "";
+                        render();
+                    }
+                });
+            }
+        }).start();
+    }
+
+    @Override
+    protected void onActivityResult(int req, int res, Intent data) {
+        super.onActivityResult(req, res, data);
+        if (req != PICK_AV || res != RESULT_OK || data == null || data.getData() == null) return;
+        try {
+            InputStream in = getContentResolver().openInputStream(data.getData());
+            BitmapFactory.Options o = new BitmapFactory.Options();
+            o.inSampleSize = 4;   // telefon rasmlari katta - xotirani tejaymiz
+            Bitmap src = BitmapFactory.decodeStream(in, null, o);
+            in.close();
+            if (src == null) return;
+            int sz = Math.min(src.getWidth(), src.getHeight());
+            Bitmap sq = Bitmap.createBitmap(src, (src.getWidth() - sz) / 2, (src.getHeight() - sz) / 2, sz, sz);
+            Bitmap sm = Bitmap.createScaledBitmap(sq, 128, 128, true);
+            ByteArrayOutputStream bo = new ByteArrayOutputStream();
+            sm.compress(Bitmap.CompressFormat.JPEG, 82, bo);
+            accEdit("a=avatar&img=" + enc("data:image/jpeg;base64," + android.util.Base64.encodeToString(bo.toByteArray(), android.util.Base64.NO_WRAP)));
+        } catch (Exception e) {
+            toastLike(String.valueOf(e.getMessage()));
+        }
+    }
+
+    /** Telegram orqali kirish: kod olinadi, Telegram ochiladi, "Start" bosilgach ilova o'zi kiradi (10 daqiqa kutadi). */
+    private void accTelegram() {
+        if (tgPolling) return;
+        tgPolling = true;
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                String err = null;
+                try {
+                    JSONObject r = xcPost("a=tgl_code");
+                    if (!r.optBoolean("ok")) err = r.optString("msg", t("acc_err"));
+                    else {
+                        final String link = r.optString("link");
+                        final String code = r.optString("code"), sec = r.optString("sec");
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                toastLike(t("acc_tgwait"));
+                                openUrl(link);
+                            }
+                        });
+                        long end = System.currentTimeMillis() + 10 * 60 * 1000;
+                        err = t("acc_tgexp");
+                        while (System.currentTimeMillis() < end) {
+                            Thread.sleep(3000);
+                            JSONObject st;
+                            try {
+                                st = xcPost("a=tgl_st&code=" + enc(code) + "&sec=" + enc(sec));
+                            } catch (Exception e) {
+                                continue;
+                            }
+                            if (st.optInt("wait") == 1) continue;
+                            if (st.optBoolean("ok") && st.optString("token").length() == 40) {
+                                prefs().edit().putString("xc_token", st.optString("token")).apply();
+                                accMe = st.optJSONObject("me");
+                                err = null;
+                            } else err = st.optString("msg", t("acc_err"));
+                            break;
+                        }
+                    }
+                } catch (Exception e) {
+                    err = t("acc_err");
+                }
+                tgPolling = false;
+                final String m = err;
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        toastLike(m != null ? m : t("acc_tgok"));
+                        if (m == null) accLoad();
+                        render();
+                    }
+                });
+            }
+        }).start();
+    }
+
+    /** Internet yoki sayt ishlamasa: botlar bilan o'yin (o'yin fayllari telefonda, internet kerak emas). */
+    private View offlineCard() {
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.HORIZONTAL);
+        card.setGravity(Gravity.CENTER_VERTICAL);
+        card.setPadding(dp(14), dp(12), dp(14), dp(12));
+        card.setBackground(round(C_CARD, 12, C_GOLD));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        lp.setMargins(0, dp(4), 0, dp(8));
+        card.setLayoutParams(lp);
+        LinearLayout tx = new LinearLayout(this);
+        tx.setOrientation(LinearLayout.VERTICAL);
+        tx.addView(text(t("off_t"), 15, C_TEXT, true));
+        tx.addView(text(t("off_s"), 12, C_MUTED, false));
+        card.addView(tx, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        Button b = button(t("off_b"), 0xFFB07A10);
+        b.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                launchBots();
+            }
+        });
+        card.addView(b);
+        return card;
+    }
+
+    private void launchBots() {
+        if (!hasData()) {
+            toastLike(t("needsetup"));
+            return;
+        }
+        writeSettings();
+        String argv = "-log -dll @yapb +exec boosttop_settings.cfg" + touchPresetArg() + " +sv_lan 1 +maxplayers 10 +yb_quota 5 +yb_difficulty 1 +map de_dust2";
+        try {
+            startActivity(new Intent().setComponent(new ComponentName(getPackageName(), "su.xash.engine.XashActivity"))
+                    .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                    .putExtra("gamedir", "cstrike")
+                    .putExtra("gamelibdir", getApplicationInfo().nativeLibraryDir)
+                    .putExtra("basedir", baseDir().getAbsolutePath())
+                    .putExtra("argv", argv)
+                    .putExtra("package", getPackageName()));
+        } catch (Exception e) {
+            toastLike(String.valueOf(e.getMessage()));
+        }
+    }
+
     private View accountCard() {
         LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.VERTICAL);
@@ -1146,7 +1451,23 @@ public class MainActivity extends Activity {
         row.setGravity(Gravity.CENTER_VERTICAL);
         LinearLayout tx = new LinearLayout(this);
         tx.setOrientation(LinearLayout.VERTICAL);
-        tx.addView(text(me.optString("name", me.optString("login")), 16, C_TEXT, true));
+        accLoadAv(me.optString("av", ""));
+        if (accAv != null && accAvKey.equals(me.optString("av", ""))) {
+            ImageView av = new ImageView(this);
+            av.setImageBitmap(accAv);
+            av.setScaleType(ImageView.ScaleType.CENTER_CROP);
+            LinearLayout.LayoutParams alp = new LinearLayout.LayoutParams(dp(44), dp(44));
+            alp.setMargins(0, 0, dp(10), 0);
+            row.addView(av, alp);
+        }
+        TextView nm = text(me.optString("name", me.optString("login")), 16, ncColor(me.optString("nc", "")), true);
+        tx.addView(nm);
+        tx.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                showProfile();
+            }
+        });
         tx.addView(text(t("acc_lvl") + " " + me.optInt("level") + "  ·  " + me.optInt("lvlxp") + " / " + me.optInt("lvlmax", 1000) + " XP", 12, C_GOLD, true));
         row.addView(tx, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         Button gift = button(t("acc_daily"), 0xFFE0353F);
@@ -1234,7 +1555,19 @@ public class MainActivity extends Activity {
         code.setTextSize(TypedValue.COMPLEX_UNIT_SP, 26);
         code.setGravity(Gravity.CENTER);
         box.addView(code);
-        new AlertDialog.Builder(this)
+        final AlertDialog[] dlg = new AlertDialog[1];
+        Button tg = button(t("acc_tg"), 0xFF2AA3DE);
+        tg.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (dlg[0] != null) dlg[0].dismiss();
+                accTelegram();
+            }
+        });
+        LinearLayout.LayoutParams tlp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(42));
+        tlp.setMargins(0, dp(10), 0, 0);
+        box.addView(tg, tlp);
+        dlg[0] = new AlertDialog.Builder(this)
                 .setTitle(t("acc_code"))
                 .setView(box)
                 .setPositiveButton(t("acc_in"), new android.content.DialogInterface.OnClickListener() {
@@ -1250,7 +1583,8 @@ public class MainActivity extends Activity {
                     }
                 })
                 .setNegativeButton(t("cancel"), null)
-                .show();
+                .create();
+        dlg[0].show();
     }
 
     private void showAccPass() {
@@ -1767,6 +2101,7 @@ public class MainActivity extends Activity {
                     cached = true;
                 }
                 final boolean failed = data == null || cached;
+                netDown = failed;
                 final JSONObject d = data;
                 runOnUiThread(new Runnable() {
                     @Override
@@ -1843,6 +2178,7 @@ public class MainActivity extends Activity {
         if (apkBuild > myBuild() && apkUrl.length() > 0) content.addView(updateCard());
         if (!setupDone() || downloading) content.addView(setupCard());
         content.addView(accountCard());
+        if (netDown && hasData()) content.addView(offlineCard());
         addNews();
 
         status = text("", 13, C_MUTED, false);
