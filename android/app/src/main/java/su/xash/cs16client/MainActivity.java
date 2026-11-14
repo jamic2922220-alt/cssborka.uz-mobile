@@ -179,6 +179,25 @@ public class MainActivity extends Activity {
                 {"cancel", "Bekor qilish", "Отмена", "Cancel"},
                 {"saved", "Saqlandi. O'yinda qo'llanadi.", "Сохранено. Применится в игре.", "Saved. Applied in game."},
                 {"ad", "Serveringizni shu yerga chiqarish: boost-top.com", "Разместить свой сервер здесь: boost-top.com", "Promote your server here: boost-top.com"},
+                {"acc_t", "X CLIENT akkaunti", "Аккаунт X CLIENT", "X CLIENT account"},
+                {"acc_s", "Kompyuterdagi akkaunting bilan kir: daraja, XP, do'stlar va kunlik sovg'a umumiy", "Войдите аккаунтом с компьютера: уровень, XP, друзья и ежедневный подарок общие", "Sign in with your PC account: level, XP, friends and daily gift are shared"},
+                {"acc_in", "Kirish", "Войти", "Sign in"},
+                {"acc_code", "Kompyuterdagi kod", "Код с компьютера", "Code from PC"},
+                {"acc_codeh", "Kompyuterda X CLIENT menyusi → «Telefonda ham o'yna» → «Kod olish». 6 xonali kodni shu yerga yozing:", "На компьютере в меню X CLIENT → «Играй и на телефоне» → «Получить код». Введите 6 цифр:", "On PC: X CLIENT menu → «Play on phone» → «Get code». Enter the 6 digits:"},
+                {"acc_pass", "Login va parol", "Логин и пароль", "Login and password"},
+                {"acc_login", "Login yoki email", "Логин или email", "Login or email"},
+                {"acc_pw", "Parol", "Пароль", "Password"},
+                {"acc_lvl", "Daraja", "Уровень", "Level"},
+                {"acc_daily", "Kunlik sovg'a", "Ежедневный подарок", "Daily gift"},
+                {"acc_got", "Olindi: +%d XP (seriya %d kun)", "Получено: +%d XP (серия %d дн.)", "Got: +%d XP (streak %d days)"},
+                {"acc_today", "Bugungi sovg'a olingan - ertaga yana", "Сегодняшний подарок получен - завтра снова", "Today's gift taken - come back tomorrow"},
+                {"acc_fr", "Onlayn do'stlar", "Друзья онлайн", "Friends online"},
+                {"acc_nofr", "Hozir onlayn do'st yo'q", "Сейчас нет друзей онлайн", "No friends online now"},
+                {"acc_menu", "menyuda", "в меню", "in menu"},
+                {"acc_phone", "telefonda", "на телефоне", "on phone"},
+                {"acc_out", "Chiqish", "Выйти", "Sign out"},
+                {"acc_err", "Internet yo'q yoki sayt javob bermadi", "Нет интернета или сайт не ответил", "No internet or the site did not respond"},
+                {"acc_xp", "O'yindagi vaqt uchun XP kompyuterdagidek yoziladi", "XP за время в игре начисляется как на компьютере", "XP for play time is counted like on PC"},
         };
         int col = "ru".equals(lang) ? 2 : ("en".equals(lang) ? 3 : 1);
         for (String[] row : tr) if (row[0].equals(key)) return row[col];
@@ -309,6 +328,8 @@ public class MainActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+        presence = false;
+        accLoad();
         render();
         loadServers();
     }
@@ -418,6 +439,7 @@ public class MainActivity extends Activity {
             argv += " +connect " + ip;
             sendStat("connect", ip);
         }
+        startPresence(ip);
         try {
             startActivity(new Intent().setComponent(new ComponentName(getPackageName(), "su.xash.engine.XashActivity"))
                     .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK)
@@ -1013,6 +1035,330 @@ public class MainActivity extends Activity {
         }
     }
 
+    // ---------------- X CLIENT akkaunti (kompyuter bilan bitta akkaunt) ----------------
+    private static final String XC_API = "https://mmb.boost-top.com/xc_api.php";
+    private volatile JSONObject accMe = null;
+    private volatile JSONArray accFriends = null;
+    private volatile boolean accLoading = false;
+    private volatile boolean presence = false;
+
+    private String accToken() {
+        return prefs().getString("xc_token", "");
+    }
+
+    /** POST so'rov (token faqat POST da - manzillar loglarga tushmasin). Javob JSON. */
+    private static JSONObject xcPost(String params) throws Exception {
+        HttpURLConnection c = (HttpURLConnection) new URL(XC_API).openConnection();
+        c.setConnectTimeout(8000);
+        c.setReadTimeout(10000);
+        c.setUseCaches(false);
+        c.setDoOutput(true);
+        c.setRequestMethod("POST");
+        c.setRequestProperty("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8");
+        try {
+            OutputStream o = c.getOutputStream();
+            o.write(params.getBytes("UTF-8"));
+            o.close();
+            InputStream in = c.getInputStream();
+            ByteArrayOutputStream bo = new ByteArrayOutputStream();
+            byte[] buf = new byte[8192];
+            int n;
+            while ((n = in.read(buf)) > 0) bo.write(buf, 0, n);
+            in.close();
+            return new JSONObject(bo.toString("UTF-8"));
+        } finally {
+            c.disconnect();
+        }
+    }
+
+    private static String enc(String v) {
+        try {
+            return java.net.URLEncoder.encode(v == null ? "" : v, "UTF-8");
+        } catch (Exception e) {
+            return "";
+        }
+    }
+
+    /** Profil va do'stlar - fonda, keyin ekran yangilanadi. Token eskirgan bo'lsa - chiqib ketadi. */
+    private void accLoad() {
+        final String tok = accToken();
+        if (tok.length() == 0 || accLoading) return;
+        accLoading = true;
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    JSONObject me = xcPost("a=me&token=" + enc(tok));
+                    if (!me.optBoolean("ok") && "auth".equals(me.optString("err"))) {
+                        prefs().edit().remove("xc_token").apply();
+                        accMe = null;
+                    } else if (me.optBoolean("ok")) {
+                        accMe = me.optJSONObject("me");
+                        JSONObject fr = xcPost("a=friends&token=" + enc(tok));
+                        if (fr.optBoolean("ok")) accFriends = fr.optJSONArray("friends");
+                    }
+                } catch (Exception ignored) {
+                }
+                accLoading = false;
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        render();
+                    }
+                });
+            }
+        }).start();
+    }
+
+    private View accountCard() {
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setPadding(dp(14), dp(12), dp(14), dp(12));
+        card.setBackground(round(0xFF2A1218, 12, 0xFFE0353F));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        lp.setMargins(0, dp(4), 0, dp(8));
+        card.setLayoutParams(lp);
+        final JSONObject me = accMe;
+        if (accToken().length() == 0 || me == null) {
+            if (accToken().length() > 0 && me == null) accLoad();
+            LinearLayout row = new LinearLayout(this);
+            row.setOrientation(LinearLayout.HORIZONTAL);
+            row.setGravity(Gravity.CENTER_VERTICAL);
+            LinearLayout tx = new LinearLayout(this);
+            tx.setOrientation(LinearLayout.VERTICAL);
+            tx.addView(text(t("acc_t"), 15, C_TEXT, true));
+            tx.addView(text(t("acc_s"), 12, C_MUTED, false));
+            row.addView(tx, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+            Button b = button(t("acc_in"), 0xFFE0353F);
+            b.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    showAccLogin();
+                }
+            });
+            row.addView(b);
+            card.addView(row);
+            return card;
+        }
+        // kirgan: ism, daraja, XP, kunlik sovg'a, onlayn do'stlar
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        LinearLayout tx = new LinearLayout(this);
+        tx.setOrientation(LinearLayout.VERTICAL);
+        tx.addView(text(me.optString("name", me.optString("login")), 16, C_TEXT, true));
+        tx.addView(text(t("acc_lvl") + " " + me.optInt("level") + "  ·  " + me.optInt("lvlxp") + " / " + me.optInt("lvlmax", 1000) + " XP", 12, C_GOLD, true));
+        row.addView(tx, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        Button gift = button(t("acc_daily"), 0xFFE0353F);
+        gift.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                accDaily();
+            }
+        });
+        row.addView(gift);
+        card.addView(row);
+        ProgressBar bar = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
+        bar.setMax(Math.max(1, me.optInt("lvlmax", 1000)));
+        bar.setProgress(me.optInt("lvlxp"));
+        LinearLayout.LayoutParams blp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(6));
+        blp.setMargins(0, dp(8), 0, dp(8));
+        card.addView(bar, blp);
+        card.addView(text(t("acc_fr"), 13, C_TEXT, true));
+        int on = 0;
+        JSONArray fr = accFriends;
+        if (fr != null) {
+            for (int i = 0; i < fr.length() && on < 6; i++) {
+                JSONObject f = fr.optJSONObject(i);
+                if (f == null || !f.optBoolean("online")) continue;
+                on++;
+                String where = f.optString("server", "");
+                String st = f.optInt("mob") == 1 ? t("acc_phone") + (where.length() > 0 ? " · " + where : "") : (where.length() > 0 ? where : t("acc_menu"));
+                TextView ft = text("●  " + f.optString("name") + "  —  " + st, 13, C_MUTED, false);
+                ft.setPadding(0, dp(3), 0, dp(3));
+                final String ip = where;
+                if (ip.length() > 0) {
+                    ft.setTextColor(C_TEXT);
+                    ft.setOnClickListener(new View.OnClickListener() {
+                        @Override
+                        public void onClick(View v) {
+                            launchGame(ip);
+                        }
+                    });
+                }
+                card.addView(ft);
+            }
+        }
+        if (on == 0) card.addView(text(t("acc_nofr"), 12, C_MUTED, false));
+        LinearLayout foot = new LinearLayout(this);
+        foot.setOrientation(LinearLayout.HORIZONTAL);
+        foot.setGravity(Gravity.CENTER_VERTICAL);
+        foot.setPadding(0, dp(8), 0, 0);
+        foot.addView(text(t("acc_xp"), 11, C_MUTED, false), new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        TextView out = text(t("acc_out"), 12, C_MUTED, true);
+        out.setPadding(dp(10), dp(4), 0, dp(4));
+        out.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                final String tok = accToken();
+                prefs().edit().remove("xc_token").apply();
+                accMe = null;
+                accFriends = null;
+                render();
+                new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        try {
+                            xcPost("a=logout&token=" + enc(tok));
+                        } catch (Exception ignored) {
+                        }
+                    }
+                }).start();
+            }
+        });
+        foot.addView(out);
+        card.addView(foot);
+        return card;
+    }
+
+    /** Kirish: kompyuterdagi 6 xonali kod (parolsiz) yoki login/parol. */
+    private void showAccLogin() {
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(dp(20), dp(8), dp(20), 0);
+        TextView h = text(t("acc_codeh"), 13, 0xFF333333, false);
+        box.addView(h);
+        final EditText code = new EditText(this);
+        code.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
+        code.setHint("123456");
+        code.setTextSize(TypedValue.COMPLEX_UNIT_SP, 26);
+        code.setGravity(Gravity.CENTER);
+        box.addView(code);
+        new AlertDialog.Builder(this)
+                .setTitle(t("acc_code"))
+                .setView(box)
+                .setPositiveButton(t("acc_in"), new android.content.DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(android.content.DialogInterface d, int w) {
+                        accDo("a=mclaim&code=" + enc(code.getText().toString().trim()));
+                    }
+                })
+                .setNeutralButton(t("acc_pass"), new android.content.DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(android.content.DialogInterface d, int w) {
+                        showAccPass();
+                    }
+                })
+                .setNegativeButton(t("cancel"), null)
+                .show();
+    }
+
+    private void showAccPass() {
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(dp(20), dp(8), dp(20), 0);
+        final EditText login = new EditText(this);
+        login.setHint(t("acc_login"));
+        login.setSingleLine(true);
+        box.addView(login);
+        final EditText pw = new EditText(this);
+        pw.setHint(t("acc_pw"));
+        pw.setSingleLine(true);
+        pw.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD);
+        box.addView(pw);
+        new AlertDialog.Builder(this)
+                .setTitle(t("acc_pass"))
+                .setView(box)
+                .setPositiveButton(t("acc_in"), new android.content.DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(android.content.DialogInterface d, int w) {
+                        accDo("a=login&mob=1&login=" + enc(login.getText().toString().trim()) + "&pass=" + enc(pw.getText().toString()));
+                    }
+                })
+                .setNegativeButton(t("cancel"), null)
+                .show();
+    }
+
+    /** Kirish so'rovi: muvaffaqiyatli bo'lsa token saqlanadi va profil yuklanadi. */
+    private void accDo(final String params) {
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                String msg;
+                try {
+                    JSONObject r = xcPost(params);
+                    if (r.optBoolean("ok") && r.optString("token").length() == 40) {
+                        prefs().edit().putString("xc_token", r.optString("token")).apply();
+                        accMe = r.optJSONObject("me");
+                        msg = null;
+                    } else msg = r.optString("msg", t("acc_err"));
+                } catch (Exception e) {
+                    msg = t("acc_err");
+                }
+                final String m = msg;
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (m != null) toastLike(m);
+                        else accLoad();
+                        render();
+                    }
+                });
+            }
+        }).start();
+    }
+
+    private void accDaily() {
+        final String tok = accToken();
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                String msg;
+                try {
+                    JSONObject r = xcPost("a=daily&token=" + enc(tok));
+                    if (!r.optBoolean("ok")) msg = r.optString("msg", t("acc_err"));
+                    else if (r.optInt("got") > 0) msg = String.format(Locale.US, t("acc_got"), r.optInt("got"), r.optInt("streak"));
+                    else msg = t("acc_today");
+                } catch (Exception e) {
+                    msg = t("acc_err");
+                }
+                final String m = msg;
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        toastLike(m);
+                        accLoad();
+                    }
+                });
+            }
+        }).start();
+    }
+
+    /** O'yin paytida har daqiqada "onlayn" belgisi (kompyuterdagi menyu kabi): do'stlar "telefonda" ko'radi, o'yin vaqti uchun XP yoziladi.
+     *  Ilova bosh ekrani qayta ochilganda (onResume) to'xtaydi, eng ko'pi 4 soat. */
+    private void startPresence(final String ip) {
+        final String tok = accToken();
+        if (tok.length() == 0) return;
+        presence = true;
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                long end = System.currentTimeMillis() + 4L * 3600 * 1000;
+                while (presence && System.currentTimeMillis() < end) {
+                    try {
+                        xcPost("a=ping&mob=1&token=" + enc(tok) + "&server=" + enc(ip == null ? "" : ip) + "&map=");
+                    } catch (Exception ignored) {
+                    }
+                    try {
+                        Thread.sleep(60000);
+                    } catch (InterruptedException e) {
+                        break;
+                    }
+                }
+            }
+        }).start();
+    }
+
     // ---------------- statistika (boost-top.com) ----------------
     /** Telefonning shifrlangan raqami (asl ANDROID_ID saytga yuborilmaydi). */
     private String deviceHash() {
@@ -1496,6 +1842,7 @@ public class MainActivity extends Activity {
 
         if (apkBuild > myBuild() && apkUrl.length() > 0) content.addView(updateCard());
         if (!setupDone() || downloading) content.addView(setupCard());
+        content.addView(accountCard());
         addNews();
 
         status = text("", 13, C_MUTED, false);
