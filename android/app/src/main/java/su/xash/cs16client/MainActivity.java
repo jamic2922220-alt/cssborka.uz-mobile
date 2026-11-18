@@ -136,6 +136,12 @@ public class MainActivity extends Activity {
                 {"gfx_low", "Past (tez)", "Низкая (быстро)", "Low (fast)"},
                 {"fps", "FPS ni ko'rsatish", "Показывать FPS", "Show FPS"},
                 {"favs", "⭐ Mening serverlarim", "⭐ Мои серверы", "⭐ My servers"},
+                {"srv_add", "➕ Server qo'shish (IP)", "➕ Добавить сервер (IP)", "➕ Add server (IP)"},
+                {"srv_add_msg", "Istalgan server IP manzilini yozing. U «Mening serverlarim»ga va o'yindagi «Избранное»ga qo'shiladi.", "Введите IP любого сервера. Он появится в «Мои серверы» и в «Избранное» в игре.", "Enter any server IP. It will appear in “My servers” and in the game's Favorites."},
+                {"srv_add_btn", "Qo'shish", "Добавить", "Add"},
+                {"srv_join_btn", "Qo'shish va kirish", "Добавить и войти", "Add and join"},
+                {"srv_bad", "IP noto'g'ri. Masalan: 51.89.39.107:27015", "Неверный IP. Пример: 51.89.39.107:27015", "Invalid IP. Example: 51.89.39.107:27015"},
+                {"srv_added", "Server qo'shildi", "Сервер добавлен", "Server added"},
                 {"pl_nick", "Nik", "Ник", "Name"},
                 {"pl_score", "Frag", "Фраги", "Score"},
                 {"pl_time", "Vaqt", "Время", "Time"},
@@ -389,6 +395,12 @@ public class MainActivity extends Activity {
             java.util.HashSet<String> seen = new java.util.HashSet<String>();
             // har doim "Favorites" da turadigan serverlar (egasining so'rovi) - saytdan ro'yxat kelmasa ham
             for (String ip : FAV_FIXED) if (seen.add(ip)) sb.append(ip).append(" gs\n");
+            // ilovada qo'shilgan / yulduzcha bosilgan serverlar
+            java.util.Iterator<String> fit = favs().keys();
+            while (fit.hasNext()) {
+                String ip = fit.next();
+                if (seen.add(ip)) sb.append(ip).append(" gs\n");
+            }
             for (int i = 0; i < sections.length(); i++) {
                 JSONObject s = sections.optJSONObject(i);
                 JSONArray list = s == null ? null : s.optJSONArray("servers");
@@ -430,7 +442,23 @@ public class MainActivity extends Activity {
                 }
             }
             if (sb.length() == 0) return;
-            FileOutputStream fo = new FileOutputStream(new File(dir, "favorite_servers.lst"));
+            // o'yin ichida "Add server" orqali qo'shilganlarni o'chirib yubormaymiz:
+            // oldin biz yozmagan qatorlar - o'yinchiniki, ular saqlanadi
+            File favf = new File(dir, "favorite_servers.lst");
+            java.util.HashSet<String> ours = new java.util.HashSet<String>(java.util.Arrays.asList(prefs().getString("fav_ours", "").split("\n")));
+            String ourNow = sb.toString();
+            if (favf.exists()) {
+                for (String line : new String(readAll(favf), "UTF-8").split("\n")) {
+                    String ln = line.trim();
+                    if (ln.length() == 0) continue;
+                    String ip = ln.split("\\s+")[0];
+                    if (!ours.contains(ip) && seen.add(ip)) sb.append(ln).append('\n');
+                }
+            }
+            StringBuilder ob = new StringBuilder();
+            for (String line : ourNow.split("\n")) if (line.trim().length() > 0) ob.append(line.trim().split("\\s+")[0]).append('\n');
+            prefs().edit().putString("fav_ours", ob.toString()).apply();
+            FileOutputStream fo = new FileOutputStream(favf);
             fo.write(sb.toString().getBytes("UTF-8"));
             fo.close();
         } catch (Exception ignored) {
@@ -1944,6 +1972,68 @@ public class MainActivity extends Activity {
     }
 
     // ---------------- sevimli serverlar (telefonda saqlanadi) ----------------
+    /** Kompyuterdagidek: o'yinchi istalgan server IP sini qo'shadi (va xohlasa darrov kiradi). */
+    private void showAddServer() {
+        final EditText ed = new EditText(this);
+        ed.setHint("51.89.39.107:27015");
+        ed.setSingleLine(true);
+        ed.setTextColor(C_TEXT);
+        ed.setHintTextColor(C_MUTED);
+        ed.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_VARIATION_URI);
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(dp(18), dp(6), dp(18), 0);
+        box.addView(text(t("srv_add_msg"), 13, C_MUTED, false));
+        box.addView(ed);
+        final AlertDialog dlg = new AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog)
+                .setTitle(t("srv_add"))
+                .setView(box)
+                .setNegativeButton(t("srv_add_btn"), null)
+                .setPositiveButton(t("srv_join_btn"), null)
+                .create();
+        dlg.setOnShowListener(new android.content.DialogInterface.OnShowListener() {
+            @Override
+            public void onShow(android.content.DialogInterface di) {
+                for (final int which : new int[]{AlertDialog.BUTTON_NEGATIVE, AlertDialog.BUTTON_POSITIVE}) {
+                    dlg.getButton(which).setOnClickListener(new View.OnClickListener() {
+                        @Override
+                        public void onClick(View v) {
+                            String ip = normAddr(ed.getText().toString());
+                            if (ip == null) {
+                                toastLike(t("srv_bad"));
+                                return;
+                            }
+                            try {
+                                JSONObject f = favs();
+                                if (!f.has(ip)) f.put(ip, ip);
+                                prefs().edit().putString("favs", f.toString()).apply();
+                            } catch (Exception ignored) {
+                            }
+                            dlg.dismiss();
+                            toastLike(t("srv_added"));
+                            render();
+                            if (which == AlertDialog.BUTTON_POSITIVE) launchGame(ip);
+                        }
+                    });
+                }
+            }
+        });
+        dlg.show();
+    }
+
+    /** "1.2.3.4", "1.2.3.4:27016", "cs.example.uz" -> "host:port"; noto'g'ri bo'lsa null. */
+    private static String normAddr(String in) {
+        String v = in == null ? "" : in.trim().replace(" ", "");
+        if (v.startsWith("connect")) v = v.substring(7);
+        v = v.replaceAll("^[a-z]+://", "");
+        if (v.endsWith("/")) v = v.substring(0, v.length() - 1);
+        if (!v.matches("[A-Za-z0-9.-]{3,253}(:[0-9]{1,5})?")) return null;
+        if (!v.contains(":")) v += ":27015";
+        int port = Integer.parseInt(v.substring(v.indexOf(':') + 1));
+        if (port < 1 || port > 65535 || !v.substring(0, v.indexOf(':')).contains(".")) return null;
+        return v;
+    }
+
     private JSONObject favs() {
         try {
             return new JSONObject(prefs().getString("favs", "{}"));
@@ -2341,6 +2431,17 @@ public class MainActivity extends Activity {
         JSONArray sections = lastData.optJSONArray("sections");
         String flagBase = lastData.optString("flag_url", "http://mmb.boost-top.com/flag.php?c=");
         int shown = 0;
+        Button addSrv = button(t("srv_add"), C_LINE);
+        addSrv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
+        addSrv.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                showAddServer();
+            }
+        });
+        LinearLayout.LayoutParams alp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(42));
+        alp.setMargins(0, dp(6), 0, dp(2));
+        content.addView(addSrv, alp);
         JSONObject fv = favs();
         if (fv.length() > 0) {
             content.addView(sectionHeader(t("favs"), "fav"));
