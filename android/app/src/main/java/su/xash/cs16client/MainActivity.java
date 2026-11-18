@@ -257,6 +257,20 @@ public class MainActivity extends Activity {
                 {"bot_l0", "Oson", "Лёгкие", "Easy"},
                 {"bot_l1", "O'rta", "Средние", "Medium"},
                 {"bot_l2", "Qiyin", "Сложные", "Hard"},
+                {"bd0", "Juda oson", "Очень лёгкие", "Very easy"},
+                {"bd1", "Oson", "Лёгкие", "Easy"},
+                {"bd2", "O'rta", "Средние", "Medium"},
+                {"bd3", "Qiyin", "Сложные", "Hard"},
+                {"bd4", "Professional", "Профи", "Pro"},
+                {"bg_title", "🤖 Botlar bilan o'yin", "🤖 Игра с ботами", "🤖 Play with bots"},
+                {"bg_map", "Xarita", "Карта", "Map"},
+                {"bg_n", "Botlar soni", "Количество ботов", "Number of bots"},
+                {"bg_d", "Botlar darajasi", "Сложность ботов", "Bot difficulty"},
+                {"bg_max", "O'yinchilar (maxplayers)", "Игроков (maxplayers)", "Players (maxplayers)"},
+                {"bg_dl", "yuklab olish", "скачать", "download"},
+                {"bg_dling", "Xarita yuklanmoqda...", "Загрузка карты...", "Downloading map..."},
+                {"bg_dlfail", "Xaritani yuklab bo'lmadi", "Не удалось скачать карту", "Couldn't download the map"},
+                {"bg_hint", "O'yin ichida ham bot qo'shish/olib tashlash: 🤖 tugmasi (bot menyusi)", "В игре добавить/убрать ботов: кнопка 🤖 (меню ботов)", "In game, add/remove bots: the 🤖 button (bot menu)"},
         };
         int col = "ru".equals(lang) ? 2 : ("en".equals(lang) ? 3 : 1);
         for (String[] row : tr) if (row[0].equals(key)) return row[col];
@@ -574,6 +588,8 @@ public class MainActivity extends Activity {
     // ovozli chat tugmasi (eski o'yinchilarga joylashuvini buzmasdan qo'shiladi)
     private static final String TOUCH_VOICE = "touch_addbutton \"voicechat\" \"touch/gfx/voicechat\" \"+voicerecord\" 0.810000 0.140000 0.890000 0.280000 255 255 255 160 0 1\n";
     private static final String TOUCH_V = "|v3";
+    // bot menyusi (o'z serverida bot qo'shish / olib tashlash / darajasi)
+    private static final String TOUCH_BOTMENU = "touch_addbutton \"botmenu\" \"touch/gfx/botmenu\" \"yb menu\" 0.070000 0.130000 0.130000 0.240000 255 255 255 150 0 1\n";
 
     /** Boshqaruv tugmalarini o'yinning o'z fayliga (cstrike/touch.cfg) yozamiz.
      *  Dvijok ishga tushganda shu faylni o'qiydi va argv dagi buyruqlarni bosib ketadi,
@@ -623,11 +639,13 @@ public class MainActivity extends Activity {
                     preset = bo.toString("UTF-8");
                 }
                 if (!preset.contains("+voicerecord")) preset += "\n" + TOUCH_VOICE;
+                if (!preset.contains("yb menu")) preset += TOUCH_BOTMENU;
                 out = preset + "touch_config_file \"" + active + "\"\n";
-            } else if (!cur.contains("+voicerecord")) {
+            } else if (!cur.contains("+voicerecord") || !cur.contains("yb menu")) {
+                String add = (cur.contains("+voicerecord") ? "" : TOUCH_VOICE) + (cur.contains("yb menu") ? "" : TOUCH_BOTMENU);
                 // touch_config_file qatoridan oldin qo'shamiz
                 int k = cur.lastIndexOf("touch_config_file");
-                out = k >= 0 ? cur.substring(0, k) + TOUCH_VOICE + cur.substring(k) : cur + "\n" + TOUCH_VOICE;
+                out = k >= 0 ? cur.substring(0, k) + add + cur.substring(k) : cur + "\n" + add;
             }
             if (out != null) {
                 if (tc.getParentFile() != null) tc.getParentFile().mkdirs();
@@ -695,6 +713,8 @@ public class MainActivity extends Activity {
         installLoc();
         try {
             SharedPreferences p = prefs();
+            syncSensFromGame(p);
+            writeBotsCfg();
             int c = p.getInt("xcolor", XCOLORS[0]);
             String color = ((c >> 16) & 0xff) + " " + ((c >> 8) & 0xff) + " " + (c & 0xff);
             String[][] cv = {
@@ -782,6 +802,7 @@ public class MainActivity extends Activity {
             FileOutputStream co = new FileOutputStream(cfg);
             co.write(out.toString().getBytes("UTF-8"));
             co.close();
+            p.edit().putFloat("sens_w", p.getFloat("sens", 3.0f)).apply();
         } catch (Exception ignored) {
         }
     }
@@ -1702,14 +1723,7 @@ public class MainActivity extends Activity {
     }
 
     private void showBotLevel() {
-        String[] lv = {t("bot_l0"), t("bot_l1"), t("bot_l2")};
-        new AlertDialog.Builder(this).setTitle(t("bot_lv")).setItems(lv, new android.content.DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(android.content.DialogInterface d, int w) {
-                prefs().edit().putInt("botlv", w).apply();
-                launchBots();
-            }
-        }).setNegativeButton(t("cancel"), null).show();
+        showBotGame();
     }
 
     /** Internet yoki sayt ishlamasa: botlar bilan o'yin (o'yin fayllari telefonda, internet kerak emas). */
@@ -1731,11 +1745,299 @@ public class MainActivity extends Activity {
         b.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                launchBots();
+                showBotGame();
             }
         });
         card.addView(b);
         return card;
+    }
+
+    /** O'yinda sezgirlikni o'zgartirsa - ilova uni eski qiymatga qaytarib qo'ymasin:
+     *  config.cfg dagi qiymat biz oxirgi yozgandan farq qilsa va ilovada o'zgartirilmagan bo'lsa - o'yindagini olamiz. */
+    private void syncSensFromGame(SharedPreferences p) {
+        try {
+            float w = p.getFloat("sens_w", -1f);
+            if (w < 0) return;
+            File cfg = new File(baseDir(), "cstrike/config.cfg");
+            if (!cfg.exists()) return;
+            java.util.regex.Matcher m = java.util.regex.Pattern.compile("(?m)^\\s*sensitivity\\s+\"?([0-9.]+)\"?").matcher(new String(readAll(cfg), "UTF-8"));
+            String v = null;
+            while (m.find()) v = m.group(1);
+            if (v == null) return;
+            float g = Float.parseFloat(v), a = p.getFloat("sens", 3.0f);
+            if (Math.abs(g - w) > 0.01f && Math.abs(a - w) < 0.01f && g > 0 && g < 30)
+                p.edit().putFloat("sens", g).putFloat("sens_w", g).apply();
+        } catch (Exception ignored) {
+        }
+    }
+
+    private static final String[] FASTDL = {"http://212.47.58.89:8090/", "http://212.47.58.40:8090/"};
+    private static final String[] EXTRA_MAPS = {"cs_mansion", "de_dust2_2x2", "awp_india", "fy_pool_day", "de_mirage", "35hp_2", "aim_map", "de_cbble", "de_train", "de_nuke"};
+
+    /** Botlar sozlamasi: yapb.cfg o'z qiymatlarini (9 bot, qiyin) qo'yib yuborardi - oxirida shu fayl bajariladi. */
+    private void writeBotsCfg() {
+        try {
+            SharedPreferences p = prefs();
+            int n = p.getInt("bot_n", 5), d = p.getInt("bot_d", 1);
+            File dir = new File(baseDir(), "cstrike");
+            if (!dir.exists()) return;
+            String c = "// X CLIENT: botlar (ilovada tanlanadi)\nyb_quota \"" + n + "\"\nyb_quota_mode \"normal\"\nyb_difficulty \"" + d + "\"\n"
+                    + "yb_difficulty_min \"-1\"\nyb_difficulty_max \"-1\"\nyb_difficulty_auto \"0\"\n"
+                    + "yb_shoots_thru_walls \"" + (d <= 1 ? 0 : d == 2 ? 1 : 2) + "\"\n"
+                    + "yb_autovacate \"1\"\n";
+            FileOutputStream fo = new FileOutputStream(new File(dir, "boosttop_bots.cfg"));
+            fo.write(c.getBytes("UTF-8"));
+            fo.close();
+            // o'yin fayllarida yapb.cfg bo'lsa - oxiriga bizning faylni ulaymiz (ilova ichidagisini CI o'zi ulaydi)
+            File y = new File(dir, "addons/yapb/conf/yapb.cfg");
+            if (y.exists()) {
+                String t = new String(readAll(y), "UTF-8");
+                if (!t.contains("boosttop_bots.cfg")) {
+                    FileOutputStream yo = new FileOutputStream(y, true);
+                    yo.write("\nexec boosttop_bots.cfg\n".getBytes("UTF-8"));
+                    yo.close();
+                }
+            }
+        } catch (Exception ignored) {
+        }
+    }
+
+    private java.util.List<String> localMaps() {
+        java.util.TreeSet<String> set = new java.util.TreeSet<String>();
+        for (String d : new String[]{"cstrike/maps", "cstrike_downloads/maps", "valve/maps"}) {
+            File[] fs = new File(baseDir(), d).listFiles();
+            if (fs != null) for (File f : fs) {
+                String n = f.getName();
+                if (n.toLowerCase(Locale.ROOT).endsWith(".bsp") && f.length() > 10000) set.add(n.substring(0, n.length() - 4));
+            }
+        }
+        set.remove("c0a0"); set.remove("c0a0a"); set.remove("c0a0b"); set.remove("c0a0c"); set.remove("c0a0d"); set.remove("c0a0e");
+        return new java.util.ArrayList<String>(set);
+    }
+
+    /** Kompyuterdagi "Yangi o'yin" kabi: xarita, botlar soni, darajasi, o'yinchilar soni. */
+    private void showBotGame() {
+        if (!hasData()) {
+            toastLike(t("needsetup"));
+            return;
+        }
+        final SharedPreferences p = prefs();
+        final int[] n = {p.getInt("bot_n", 5)};
+        final int[] dif = {p.getInt("bot_d", 1)};
+        final int[] mx = {p.getInt("bot_max", 12)};
+        final String[] map = {p.getString("bot_map", "de_dust2")};
+        final java.util.List<String> maps = localMaps();
+        final java.util.List<String> remote = new java.util.ArrayList<String>();
+        if (!maps.contains(map[0]) && !maps.isEmpty()) map[0] = maps.contains("de_dust2") ? "de_dust2" : maps.get(0);
+
+        ScrollView sv = new ScrollView(this);
+        final LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(dp(18), dp(10), dp(18), dp(6));
+        box.setBackgroundColor(C_CARD);
+        sv.addView(box);
+
+        box.addView(text(t("bg_map"), 14, C_GOLD, true));
+        final TextView mapBtn = text("🗺  " + map[0] + "  ▾", 15, C_TEXT, true);
+        mapBtn.setPadding(dp(12), dp(10), dp(12), dp(10));
+        mapBtn.setBackground(round(C_BG, 6, C_LINE));
+        LinearLayout.LayoutParams mlp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        mlp.setMargins(0, dp(6), 0, dp(12));
+        box.addView(mapBtn, mlp);
+        mapBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                final java.util.List<String> all = new java.util.ArrayList<String>(maps);
+                java.util.List<String> labels = new java.util.ArrayList<String>(maps);
+                for (String r : remote) { all.add(r); labels.add(r + "   ⬇ " + t("bg_dl")); }
+                new AlertDialog.Builder(MainActivity.this, android.R.style.Theme_Material_Dialog)
+                        .setTitle(t("bg_map"))
+                        .setItems(labels.toArray(new String[0]), new android.content.DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(android.content.DialogInterface d, int w) {
+                                final String m = all.get(w);
+                                if (maps.contains(m)) { map[0] = m; mapBtn.setText("🗺  " + m + "  ▾"); return; }
+                                downloadMap(m, new Runnable() {
+                                    public void run() { maps.add(m); remote.remove(m); map[0] = m; mapBtn.setText("🗺  " + m + "  ▾"); }
+                                });
+                            }
+                        }).show();
+            }
+        });
+        // FastDL da bor, telefonda yo'q xaritalar (masalan, cs_mansion)
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                for (String m : EXTRA_MAPS) {
+                    if (maps.contains(m)) continue;
+                    for (String b : FASTDL) {
+                        try {
+                            HttpURLConnection c = (HttpURLConnection) new URL(b + "maps/" + m + ".bsp").openConnection();
+                            c.setRequestMethod("HEAD");
+                            c.setConnectTimeout(4000);
+                            c.setReadTimeout(4000);
+                            int code = c.getResponseCode();
+                            c.disconnect();
+                            if (code == 200) { synchronized (remote) { remote.add(m); } break; }
+                        } catch (Exception ignored) {
+                        }
+                    }
+                }
+            }
+        }).start();
+
+        final TextView nl = text("", 14, C_GOLD, true);
+        nl.setText(t("bg_n") + ": " + n[0]);
+        box.addView(nl);
+        final SeekBar ns = new SeekBar(this);
+        ns.setMax(30);
+        ns.setProgress(Math.max(0, n[0] - 1));
+        box.addView(ns);
+        final TextView ml = text("", 14, C_GOLD, true);
+        ml.setPadding(0, dp(12), 0, 0);
+        ml.setText(t("bg_max") + ": " + mx[0]);
+        final SeekBar ms = new SeekBar(this);
+        ms.setMax(30);
+        ms.setProgress(Math.max(0, mx[0] - 2));
+        ns.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            public void onProgressChanged(SeekBar s, int v, boolean u) {
+                n[0] = v + 1;
+                nl.setText(t("bg_n") + ": " + n[0]);
+                if (mx[0] < n[0] + 1) { mx[0] = Math.min(32, n[0] + 1); ms.setProgress(mx[0] - 2); }
+            }
+            public void onStartTrackingTouch(SeekBar s) {}
+            public void onStopTrackingTouch(SeekBar s) {}
+        });
+
+        TextView dl = text(t("bg_d"), 14, C_GOLD, true);
+        dl.setPadding(0, dp(12), 0, dp(6));
+        box.addView(dl);
+        LinearLayout dr = new LinearLayout(this);
+        dr.setOrientation(LinearLayout.VERTICAL);
+        final TextView[] db = new TextView[5];
+        for (int i = 0; i < 5; i++) {
+            final int k = i;
+            db[i] = text(t("bd" + i), 14, Color.WHITE, k == dif[0]);
+            db[i].setPadding(dp(12), dp(9), dp(12), dp(9));
+            db[i].setBackground(round(k == dif[0] ? C_ACCENT : C_BG, 6, C_LINE));
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            lp.setMargins(0, 0, 0, dp(5));
+            db[i].setOnClickListener(new View.OnClickListener() {
+                public void onClick(View v) {
+                    dif[0] = k;
+                    for (int j = 0; j < 5; j++) db[j].setBackground(round(j == k ? C_ACCENT : C_BG, 6, C_LINE));
+                }
+            });
+            dr.addView(db[i], lp);
+        }
+        box.addView(dr);
+
+        box.addView(ml);
+        ms.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            public void onProgressChanged(SeekBar s, int v, boolean u) {
+                mx[0] = v + 2;
+                if (mx[0] < n[0] + 1) { n[0] = Math.max(1, mx[0] - 1); ns.setProgress(n[0] - 1); }
+                ml.setText(t("bg_max") + ": " + mx[0]);
+            }
+            public void onStartTrackingTouch(SeekBar s) {}
+            public void onStopTrackingTouch(SeekBar s) {}
+        });
+        box.addView(ms);
+        TextView hint = text(t("bg_hint"), 12, C_MUTED, false);
+        hint.setPadding(0, dp(10), 0, 0);
+        box.addView(hint);
+
+        new AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog)
+                .setTitle(t("bg_title"))
+                .setView(sv)
+                .setNegativeButton(t("cancel"), null)
+                .setPositiveButton(t("bot_b"), new android.content.DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(android.content.DialogInterface d, int w) {
+                        p.edit().putInt("bot_n", n[0]).putInt("bot_d", dif[0]).putInt("bot_max", Math.max(mx[0], n[0] + 1)).putString("bot_map", map[0]).apply();
+                        launchBots();
+                    }
+                }).show();
+    }
+
+    /** FastDL dan xarita (.bsp) va unga kerakli fayllar (.res ro'yxati, wad) ni yuklab olish. */
+    private void downloadMap(final String m, final Runnable done) {
+        final AlertDialog pd = new AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog).setMessage(t("bg_dling") + " " + m).setCancelable(false).create();
+        pd.show();
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                boolean ok = false;
+                File cs = new File(baseDir(), "cstrike");
+                for (String b : FASTDL) {
+                    if (fetchTo(b + "maps/" + m + ".bsp", new File(cs, "maps/" + m + ".bsp"))) {
+                        ok = true;
+                        // .res - xaritaga kerakli fayllar ro'yxati
+                        File res = new File(cs, "maps/" + m + ".res");
+                        java.util.List<String> need = new java.util.ArrayList<String>();
+                        if (fetchTo(b + "maps/" + m + ".res", res)) {
+                            try {
+                                for (String ln : new String(readAll(res), "UTF-8").split("\n")) {
+                                    String f = ln.trim().replace("\\", "/");
+                                    if (f.length() == 0 || f.startsWith("//") || f.contains("..") || f.startsWith("/")) continue;
+                                    need.add(f);
+                                }
+                            } catch (Exception ignored) {
+                            }
+                        }
+                        // bsp ichidagi "wad" kaliti
+                        try {
+                            String bsp = new String(readAll(new File(cs, "maps/" + m + ".bsp")), "ISO-8859-1");
+                            java.util.regex.Matcher wm = java.util.regex.Pattern.compile("\"wad\"\\s*\"([^\"]*)\"").matcher(bsp);
+                            if (wm.find()) for (String w : wm.group(1).split(";")) {
+                                String nm = w.replace("\\", "/");
+                                nm = nm.substring(nm.lastIndexOf('/') + 1).trim();
+                                if (nm.toLowerCase(Locale.ROOT).endsWith(".wad")) need.add(nm);
+                            }
+                        } catch (Throwable ignored) {
+                        }
+                        for (String f : need) {
+                            File dst = new File(cs, f);
+                            if (dst.exists() || new File(baseDir(), "valve/" + f).exists()) continue;
+                            fetchTo(b + f, dst);
+                        }
+                        break;
+                    }
+                }
+                final boolean fok = ok;
+                runOnUiThread(new Runnable() {
+                    public void run() {
+                        try { pd.dismiss(); } catch (Exception ignored) {}
+                        if (fok) done.run(); else toastLike(t("bg_dlfail"));
+                    }
+                });
+            }
+        }).start();
+    }
+
+    private static boolean fetchTo(String url, File dst) {
+        File tmp = new File(dst.getPath() + ".part");
+        try {
+            HttpURLConnection c = (HttpURLConnection) new URL(url).openConnection();
+            c.setConnectTimeout(8000);
+            c.setReadTimeout(20000);
+            if (c.getResponseCode() != 200) { c.disconnect(); return false; }
+            if (dst.getParentFile() != null) dst.getParentFile().mkdirs();
+            InputStream in = c.getInputStream();
+            FileOutputStream fo = new FileOutputStream(tmp);
+            byte[] buf = new byte[32768];
+            int k;
+            long total = 0;
+            while ((k = in.read(buf)) > 0) { fo.write(buf, 0, k); total += k; if (total > 80L * 1024 * 1024) break; }
+            fo.close();
+            in.close();
+            c.disconnect();
+            if (total == 0) { tmp.delete(); return false; }
+            return tmp.renameTo(dst);
+        } catch (Exception e) {
+            tmp.delete();
+            return false;
+        }
     }
 
     private void launchBots() {
@@ -1744,7 +2046,12 @@ public class MainActivity extends Activity {
             return;
         }
         writeSettings();
-        String argv = "-log -dll @yapb +exec boosttop_settings.cfg" + touchPresetArg() + " +sv_lan 1 +maxplayers 10 +yb_quota 5 +yb_difficulty " + new int[]{0, 2, 3}[Math.max(0, Math.min(2, prefs().getInt("botlv", 1)))] + " +map de_dust2";
+        SharedPreferences p = prefs();
+        int n = p.getInt("bot_n", 5), mx = Math.max(p.getInt("bot_max", 12), n + 1);
+        String map = p.getString("bot_map", "de_dust2");
+        if (!map.matches("[A-Za-z0-9_.-]{1,40}")) map = "de_dust2";
+        String argv = "-log -dll @yapb +exec boosttop_settings.cfg" + touchPresetArg() + " +sv_lan 1 +maxplayers " + Math.min(32, mx)
+                + " +yb_quota " + n + " +yb_difficulty " + p.getInt("bot_d", 1) + " +map " + map;
         try {
             startActivity(new Intent().setComponent(new ComponentName(getPackageName(), "su.xash.engine.XashActivity"))
                     .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK)

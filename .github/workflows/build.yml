@@ -563,6 +563,15 @@ jobs:
           ea = os.path.join(app, 'engine_assets')
           for src in ['3rdparty/cs16client-extras', '3rdparty/yapb/cfg']:
               shutil.copytree(src, ea, dirs_exist_ok=True); print('extras', src)
+          # botlar: yapb.cfg o'yin boshida 9 ta "qiyin" bot qo'yardi (ilovada tanlangani bosib ketilardi).
+          # Standart: 5 ta "oson" bot, devor orqali otmaydi; oxirida ilova yozgan boosttop_bots.cfg bajariladi
+          yc = os.path.join(ea, 'addons', 'yapb', 'conf', 'yapb.cfg')
+          t = open(yc, encoding='utf-8', errors='replace').read()
+          for a, b in [('yb_quota "9"', 'yb_quota "5"'), ('yb_difficulty "3"', 'yb_difficulty "1"'), ('yb_shoots_thru_walls "2"', 'yb_shoots_thru_walls "0"')]:
+              assert a in t, a
+              t = t.replace(a, b)
+          t += '\nexec boosttop_bots.cfg\n'
+          open(yc, 'w', encoding='utf-8').write(t); print('yapb.cfg patched')
           # Ekrandagi ⚙ (touch_edit) tugmasi tugma muharririni emas, o'yin menyusini ochsin
           n_edit = 0
           for root, _, files in os.walk(ea):
