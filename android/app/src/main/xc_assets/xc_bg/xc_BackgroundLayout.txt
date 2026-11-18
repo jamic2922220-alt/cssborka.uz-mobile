@@ -1,0 +1,2 @@
+resolution	1280	720
+gfx/xc_bg.tga	scaled	0	0

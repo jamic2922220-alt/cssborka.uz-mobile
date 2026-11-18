@@ -828,6 +828,27 @@ jobs:
           ''' + s[j:]
           open(p, 'w', encoding='utf-8').write(s)
           print('Main.cpp patched')
+
+          # Sozlamalar: telefonda kerak bo'lmagan (texnik) bandlarni olib tashlaymiz
+          def drop(path, items):
+              t = open(path, encoding='utf-8').read()
+              for a, b in items:
+                  if a in t: t = t.replace(a, b)
+                  else: print('::warning::%s: topilmadi: %s' % (path, a))
+              open(path, 'w', encoding='utf-8').write(t)
+          m = '3rdparty/mainui_cpp/menus/'
+          drop(m + 'Controls.cpp', [
+              ('AddButton( L( "Adv. Controls" ), nullptr, PC_ADV_CONTROLS, UI_AdvControls_Menu );', ''),
+              ('AddButton( L( "GameUI_Joystick" ), L( "Change gamepad axis and button settings" ), PC_GAMEPAD, UI_GamePad_Menu );', '')])
+          # "Video" -> to'g'ridan-to'g'ri video sozlamalari (ekran rejimlari telefonda kerak emas)
+          drop(m + 'Configuration.cpp', [('PC_VIDEO, UI_Video_Menu', 'PC_VIDEO, UI_VidOptions_Menu')])
+          drop(m + 'VideoOptions.cpp', [('\tAddItem( %s );' % x, '') for x in ['detailtex', 'vbo', 'swwater', 'overbright', 'filtering', 'testImage']])
+          drop(m + 'Audio.cpp', [('\tAddItem( %s );' % x, '') for x in ['noDSP', 'useAlphaDSP', 'muteFocusLost']])
+          # Fon: X CLIENT foni (ilova cstrike/resource/xc_BackgroundLayout.txt ni yozadi), versiya yozuvi chiqmasin
+          drop('3rdparty/mainui_cpp/controls/BackgroundBitmap.cpp', [
+              ('\t// try 25\'th anniversary update background first\n\tif( FBitSet(',
+               '\tafile = (char *)EngFuncs::COM_LoadFile( "resource/xc_BackgroundLayout.txt" );\n\t// try 25\'th anniversary update background first\n\tif( !afile && FBitSet('),
+              ('\tEngFuncs::engfuncs.pfnDrawConsoleString( stringLen * 0.05f, ScreenHeight - charH * 1.05f, version );', '')])
           PY
       - name: Setup Java (JetBrains 21)
         uses: actions/setup-java@v5

@@ -126,6 +126,7 @@ public class MainActivity extends Activity {
                 {"dlok", "O'yin fayllari tayyor!", "Файлы игры готовы!", "Game files are ready!"},
                 {"dlerr", "Yuklashda xato: ", "Ошибка загрузки: ", "Download error: "},
                 {"needsetup", "Avval o'yinni sozlang (yuqoridagi qadamlar)", "Сначала настройте игру (шаги выше)", "Set up the game first (steps above)"},
+                {"mic_ask", "Ovozli chat uchun mikrofonga ruxsat bering", "Разрешите микрофон для голосового чата", "Allow the microphone for voice chat"},
                 {"upd", "Yangi versiya chiqdi!", "Вышла новая версия!", "New version available!"},
                 {"updb", "YANGILASH", "ОБНОВИТЬ", "UPDATE"},
                 {"nick", "O'yindagi nik", "Ник в игре", "In-game nickname"},
@@ -449,11 +450,44 @@ public class MainActivity extends Activity {
         }
     }
 
+    // ---------------- mikrofon (ovozli chat) ----------------
+    private boolean micAsked = false;
+    private String micPendingIp = null;
+
+    /** O'yindan oldin mikrofon ruxsatini so'raymiz (bir sessiyada bir marta, 3 marta rad etilsa boshqa so'ramaymiz). */
+    private boolean askMic(String ip) {
+        if (Build.VERSION.SDK_INT < 23 || micAsked) return false;
+        try {
+            if (checkSelfPermission("android.permission.RECORD_AUDIO") == android.content.pm.PackageManager.PERMISSION_GRANTED) return false;
+            int n = prefs().getInt("mic_ask", 0);
+            if (n >= 3) return false;
+            prefs().edit().putInt("mic_ask", n + 1).apply();
+            micAsked = true;
+            micPendingIp = ip;
+            toastLike(t("mic_ask"));
+            requestPermissions(new String[]{"android.permission.RECORD_AUDIO"}, 79);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int req, String[] perms, int[] res) {
+        super.onRequestPermissionsResult(req, perms, res);
+        if (req == 79) {
+            if (res.length > 0 && res[0] == android.content.pm.PackageManager.PERMISSION_GRANTED)
+                prefs().edit().putInt("mic_ask", 0).apply();
+            launchGame(micPendingIp);
+        }
+    }
+
     private void launchGame(String ip) {
         if (!hasData()) {
             toastLike(t("needsetup"));
             return;
         }
+        if (askMic(ip)) return;
         writeFavorites();
         writeSettings();
         // O'yin ichidagi server ro'yxatida faqat boost-top.com serverlari chiqsin:
@@ -478,24 +512,33 @@ public class MainActivity extends Activity {
     }
 
     // ---------------- PRO boshqaruv (tugmalar joylashuvi) ----------------
-    private static final String TOUCH_PRO = "// boost-top PRO boshqaruv: chap qo'lda ham O'Q tugmasi (o'ng barmoq nishonda qoladi)\ntouch_removeall\ntouch_pitch \"50\"\ntouch_yaw \"50\"\ntouch_precise_amount \"0.5\"\ntouch_move_indicator \"3\"\ntouch_addbutton \"move\" \"\" \"_move\" 0.000000 0.110000 0.480000 1.000000 255 255 255 150 0\ntouch_addbutton \"look\" \"\" \"_look\" 0.480000 0.110000 1.000000 1.000000 255 255 255 150 0\ntouch_addbutton \"attack_l\" \"touch/gfx/attack\" \"+attack\" 0.040000 0.300000 0.150000 0.500000 255 90 90 190 0 1\ntouch_addbutton \"attack\" \"touch/gfx/attack\" \"+attack\" 0.780000 0.420000 0.920000 0.670000 255 90 90 190 0 1\ntouch_addbutton \"attack2\" \"touch/gfx/attack2\" \"+attack2\" 0.680000 0.250000 0.770000 0.410000 255 255 255 170 0 1\ntouch_addbutton \"jump\" \"touch/gfx/jump\" \"+jump\" 0.910000 0.200000 1.000000 0.380000 255 255 255 160 0 1\ntouch_addbutton \"duck\" \"touch/gfx/duck\" \"+duck\" 0.900000 0.700000 1.000000 0.880000 255 255 255 160 512 1\ntouch_addbutton \"reload\" \"touch/gfx/reload\" \"+reload\" 0.800000 0.720000 0.890000 0.880000 255 255 255 160 0 1\ntouch_addbutton \"use\" \"touch/gfx/use\" \"+use\" 0.920000 0.400000 1.000000 0.540000 255 255 255 150 0 1\ntouch_addbutton \"w1\" \"touch/gfx/w_rifle\" \"slot1\" 0.100000 0.000000 0.160000 0.106667 255 255 255 150 0 1\ntouch_addbutton \"w2\" \"touch/gfx/w_pistol\" \"slot2\" 0.180000 0.000000 0.240000 0.106667 255 255 255 150 0 1\ntouch_addbutton \"w3\" \"touch/gfx/w_knife\" \"slot3\" 0.260000 0.000000 0.320000 0.106667 255 255 255 150 0 1\ntouch_addbutton \"w4\" \"touch/gfx/w_grenade\" \"slot4\" 0.340000 0.000000 0.400000 0.106667 255 255 255 150 0 1\ntouch_addbutton \"w5\" \"touch/gfx/w_c4\" \"slot5\" 0.660000 0.000000 0.720000 0.106667 255 255 255 150 0 1\ntouch_addbutton \"buy\" \"touch/gfx/buy\" \"buy\" 0.460000 0.860000 0.540000 1.000000 255 255 255 150 0 1\ntouch_addbutton \"score\" \"touch/gfx/score\" \"scoreboard\" 0.920000 0.000000 1.000000 0.142222 255 255 255 150 0 1\ntouch_addbutton \"touch_edit\" \"touch/gfx/settings\" \"togglemenu\" 0.460000 0.000000 0.540000 0.142222 255 255 255 150 0 1\ntouch_addbutton \"drop\" \"touch/gfx/drop\" \"drop\" 0.580000 0.000000 0.640000 0.106667 255 255 255 150 0 1\ntouch_addbutton \"chat\" \"touch/gfx/chat_all\" \"messagemode\" 0.000000 0.000000 0.060000 0.106667 255 255 255 150 0 1\ntouch_addbutton \"change_team\" \"touch/gfx/change_team\" \"chooseteam\" 0.000000 0.130000 0.060000 0.240000 255 255 255 150 0 1\ntouch_addbutton \"radio\" \"touch/gfx/radio\" \"showvguimenu 38\" 0.740000 0.000000 0.800000 0.106667 255 255 255 150 0 1\ntouch_addbutton \"walk\" \"touch/gfx/walk\" \"+speed\" 0.180000 0.800000 0.270000 0.960000 255 255 255 140 0 1\ntouch_addbutton \"invprev\" \"touch/gfx/left\" \"invprev\" 0.000000 0.560000 0.060000 0.660000 255 255 255 150 0 1\ntouch_addbutton \"invnext\" \"touch/gfx/right\" \"invnext\" 0.000000 0.680000 0.060000 0.780000 255 255 255 150 0 1\n";
+    private static final String TOUCH_PRO = "// boost-top PRO boshqaruv: chap qo'lda ham O'Q tugmasi (o'ng barmoq nishonda qoladi)\ntouch_removeall\ntouch_pitch \"50\"\ntouch_yaw \"50\"\ntouch_precise_amount \"0.5\"\ntouch_move_indicator \"3\"\ntouch_addbutton \"move\" \"\" \"_move\" 0.000000 0.110000 0.480000 1.000000 255 255 255 150 0\ntouch_addbutton \"look\" \"\" \"_look\" 0.480000 0.110000 1.000000 1.000000 255 255 255 150 0\ntouch_addbutton \"attack_l\" \"touch/gfx/attack\" \"+attack\" 0.040000 0.300000 0.150000 0.500000 255 90 90 190 0 1\ntouch_addbutton \"attack\" \"touch/gfx/attack\" \"+attack\" 0.780000 0.420000 0.920000 0.670000 255 90 90 190 0 1\ntouch_addbutton \"attack2\" \"touch/gfx/attack2\" \"+attack2\" 0.680000 0.250000 0.770000 0.410000 255 255 255 170 0 1\ntouch_addbutton \"jump\" \"touch/gfx/jump\" \"+jump\" 0.910000 0.200000 1.000000 0.380000 255 255 255 160 0 1\ntouch_addbutton \"duck\" \"touch/gfx/duck\" \"+duck\" 0.900000 0.700000 1.000000 0.880000 255 255 255 160 512 1\ntouch_addbutton \"reload\" \"touch/gfx/reload\" \"+reload\" 0.800000 0.720000 0.890000 0.880000 255 255 255 160 0 1\ntouch_addbutton \"use\" \"touch/gfx/use\" \"+use\" 0.920000 0.400000 1.000000 0.540000 255 255 255 150 0 1\ntouch_addbutton \"w1\" \"touch/gfx/w_rifle\" \"slot1\" 0.100000 0.000000 0.160000 0.106667 255 255 255 150 0 1\ntouch_addbutton \"w2\" \"touch/gfx/w_pistol\" \"slot2\" 0.180000 0.000000 0.240000 0.106667 255 255 255 150 0 1\ntouch_addbutton \"w3\" \"touch/gfx/w_knife\" \"slot3\" 0.260000 0.000000 0.320000 0.106667 255 255 255 150 0 1\ntouch_addbutton \"w4\" \"touch/gfx/w_grenade\" \"slot4\" 0.340000 0.000000 0.400000 0.106667 255 255 255 150 0 1\ntouch_addbutton \"w5\" \"touch/gfx/w_c4\" \"slot5\" 0.660000 0.000000 0.720000 0.106667 255 255 255 150 0 1\ntouch_addbutton \"buy\" \"touch/gfx/buy\" \"buy\" 0.460000 0.860000 0.540000 1.000000 255 255 255 150 0 1\ntouch_addbutton \"score\" \"touch/gfx/score\" \"scoreboard\" 0.920000 0.000000 1.000000 0.142222 255 255 255 150 0 1\ntouch_addbutton \"touch_edit\" \"touch/gfx/settings\" \"togglemenu\" 0.460000 0.000000 0.540000 0.142222 255 255 255 150 0 1\ntouch_addbutton \"drop\" \"touch/gfx/drop\" \"drop\" 0.580000 0.000000 0.640000 0.106667 255 255 255 150 0 1\ntouch_addbutton \"chat\" \"touch/gfx/chat_all\" \"messagemode\" 0.000000 0.000000 0.060000 0.106667 255 255 255 150 0 1\ntouch_addbutton \"change_team\" \"touch/gfx/change_team\" \"chooseteam\" 0.000000 0.130000 0.060000 0.240000 255 255 255 150 0 1\ntouch_addbutton \"radio\" \"touch/gfx/radio\" \"showvguimenu 38\" 0.740000 0.000000 0.800000 0.106667 255 255 255 150 0 1\ntouch_addbutton \"walk\" \"touch/gfx/walk\" \"+speed\" 0.180000 0.800000 0.270000 0.960000 255 255 255 140 0 1\ntouch_addbutton \"invprev\" \"touch/gfx/left\" \"invprev\" 0.000000 0.560000 0.060000 0.660000 255 255 255 150 0 1\ntouch_addbutton \"invnext\" \"touch/gfx/right\" \"invnext\" 0.000000 0.680000 0.060000 0.780000 255 255 255 150 0 1\ntouch_addbutton \"voicechat\" \"touch/gfx/voicechat\" \"+voicerecord\" 0.810000 0.140000 0.890000 0.280000 255 255 255 160 0 1\n";
+    // ovozli chat tugmasi (eski o'yinchilarga joylashuvini buzmasdan qo'shiladi)
+    private static final String TOUCH_VOICE = "touch_addbutton \"voicechat\" \"touch/gfx/voicechat\" \"+voicerecord\" 0.810000 0.140000 0.890000 0.280000 255 255 255 160 0 1\n";
+    private static final String TOUCH_V = "|v2";
 
     /** Tanlangan boshqaruvni o'yin ochilishida BIR MARTA qo'llaydi (keyin o'yinchi o'zi o'zgartirsa saqlanib qoladi). */
     private String touchPresetArg() {
         SharedPreferences p = prefs();
         String lay = p.getString("touchlay", "pro");
-        if (lay.equals(p.getString("touch_applied", ""))) return "";
+        String applied = p.getString("touch_applied", "");
+        if ((lay + TOUCH_V).equals(applied)) return "";
+        boolean onlyVoice = lay.equals(applied); // eski versiyada qo'llangan: faqat ovoz tugmasini qo'shamiz
         try {
             File dir = new File(baseDir(), "cstrike/touch_presets");
             dir.mkdirs();
             FileOutputStream fo = new FileOutputStream(new File(dir, "boosttop_pro.cfg"));
             fo.write(TOUCH_PRO.getBytes("UTF-8"));
             fo.close();
+            fo = new FileOutputStream(new File(dir, "boosttop_voice.cfg"));
+            fo.write(TOUCH_VOICE.getBytes("UTF-8"));
+            fo.close();
         } catch (Exception e) {
             return "";
         }
-        p.edit().putString("touch_applied", lay).apply();
-        return "pro".equals(lay) ? " +exec touch_presets/boosttop_pro.cfg" : " +exec touch_presets/phone_ahsim.cfg";
+        p.edit().putString("touch_applied", lay + TOUCH_V).apply();
+        if (onlyVoice) return " +exec touch_presets/boosttop_voice.cfg";
+        return "pro".equals(lay) ? " +exec touch_presets/boosttop_pro.cfg" : " +exec touch_presets/phone_ahsim.cfg +exec touch_presets/boosttop_voice.cfg";
     }
 
     // ---------------- sozlamalar: til, sezgirlik, pritsel ----------------
@@ -516,12 +559,15 @@ public class MainActivity extends Activity {
     /** Tarjima tuzatishlari (o'yin arxividagi fayllar ustidan, arxivni qayta yuklamasdan; versiya o'zgarganda yoziladi):
      *  o'zbekcha - ~230 qator inglizcha qolgan edi (jamoa va qurol tavsiflari, yordamchi maslahatlar, radio);
      *  ruscha - HUD (Деньги, HP, Набор), "Покинуть игру" va MOTD oynasi tugmalari faylda umuman yo'q edi. */
-    private static final int LOC_VER = 1;
+    private static final int LOC_VER = 2;
     private static final String[][] LOC_FILES = {
             {"xc_loc/cstrike_uzbek.txt", "cstrike/resource/cstrike_uzbek.txt"},
             {"xc_loc/cstrike_russian.txt", "cstrike/resource/cstrike_russian.txt"},
             {"xc_loc/gameui_russian.txt", "valve/resource/gameui_russian.txt"},
             {"xc_loc/valve_russian.txt", "valve/resource/valve_russian.txt"},
+            // o'yin menyusi foni: X CLIENT
+            {"xc_bg/xc_bg.tga", "cstrike/gfx/xc_bg.tga"},
+            {"xc_bg/xc_BackgroundLayout.txt", "cstrike/resource/xc_BackgroundLayout.txt"},
     };
     private void installLoc() {
         if (prefs().getInt("loc_v", 0) == LOC_VER) return;
@@ -583,6 +629,11 @@ public class MainActivity extends Activity {
                     {"r_dynamic", "high".equals(p.getString("gfx", "high")) ? "1" : "0"},
                     {"fps_max", "low".equals(p.getString("gfx", "high")) ? "60" : "100"},
                     {"developer", "0"},
+                    // ovozli chat: doim yoqilgan (tugmani bosib turib gapiriladi)
+                    {"voice_enable", "1"},
+                    {"voice_modenable", "1"},
+                    {"voice_scale", "1"},
+                    {"ui_prefer_won_background", "0"},
                     // tarmoq: o'qlar aniq hisoblanishi uchun (server o'z chegarasigacha cheklaydi)
                     {"rate", "100000"},
                     {"cl_updaterate", "101"},
@@ -950,7 +1001,7 @@ public class MainActivity extends Activity {
                                 .putInt("xthick", selThick[0]).putBoolean("xdot", dotCb.isChecked())
                                 .putString("touchlay", selLay[0])
                                 .putBoolean("gyro", gyroCb.isChecked()).putFloat("gyrosens", selGyro[0]).apply();
-                        if (!selLay[0].equals(p.getString("touch_applied", "")))
+                        if (!(selLay[0] + TOUCH_V).equals(p.getString("touch_applied", "")))
                             p.edit().putString("touch_applied", "").apply();
                         lang = selLang[0];
                         writeSettings();
