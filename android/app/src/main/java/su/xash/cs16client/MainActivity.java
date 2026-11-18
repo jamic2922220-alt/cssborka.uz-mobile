@@ -625,12 +625,16 @@ public class MainActivity extends Activity {
 
     /** Chap/o'ng (invprev/invnext) strelkalarni olib tashlaydi; ovoz, muharrir, bot menyusi tugmalari yo'q bo'lsa qo'shadi. */
     private static String fixTouch(String c) {
-        c = c.replaceAll("(?m)^\\s*touch_addbutton\\s+\"(invprev|invnext)\"[^\\n]*\\n?", "");
-        String add = (c.contains("+voicerecord") ? "" : TOUCH_VOICE) + (c.contains("touch_enableedit") ? "" : TOUCH_EDIT) + (c.contains("yb menu") ? "" : TOUCH_BOTMENU);
-        if (add.length() == 0) return c;
-        int k = c.lastIndexOf("touch_config_file");
-        if (!c.endsWith("\n") && k < 0) c += "\n";
-        return k >= 0 ? c.substring(0, k) + add + c.substring(k) : c + add;
+        // tugmalar "touch_removeall" dan KEYIN bo'lishi shart (oldin qo'shilsa - o'yin darrov o'chiradi).
+        // Faylning boshida touch_config_file qatori bo'lgani uchun oldingi versiya ularni removeall dan oldin yozib qo'ygan edi
+        int r = c.lastIndexOf("touch_removeall");
+        String head = r >= 0 ? c.substring(0, r) : "";
+        String tail = r >= 0 ? c.substring(r) : c;
+        head = head.replaceAll("(?m)^\\s*touch_addbutton\\s+\"(voicechat|tedit|botmenu)\"[^\\n]*\\n?", "");
+        tail = tail.replaceAll("(?m)^\\s*touch_addbutton\\s+\"(invprev|invnext)\"[^\\n]*\\n?", "");
+        String add = (tail.contains("+voicerecord") ? "" : TOUCH_VOICE) + (tail.contains("touch_enableedit") ? "" : TOUCH_EDIT) + (tail.contains("yb menu") ? "" : TOUCH_BOTMENU);
+        if (add.length() > 0 && !tail.endsWith("\n")) tail += "\n";
+        return head + tail + add;
     }
 
     private String touchPresetArg() {
