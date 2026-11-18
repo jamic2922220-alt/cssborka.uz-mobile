@@ -580,11 +580,28 @@ public class MainActivity extends Activity {
      *  shuning uchun tugmalarni +exec orqali emas, to'g'ridan-to'g'ri faylga qo'yamiz.
      *  - yangi o'rnatish yoki sozlamalarda boshqaruv almashtirilgan: tanlangan joylashuv to'liq yoziladi;
      *  - qolgan hollarda o'yinchining joylashuvi saqlanadi, faqat ovoz tugmasi yo'q bo'lsa qo'shiladi. */
+    /** config.cfg dagi touch_config_file (bo'lmasa - touch.cfg). */
+    private String activeTouchFile() {
+        try {
+            File cfg = new File(baseDir(), "cstrike/config.cfg");
+            if (cfg.exists()) {
+                java.util.regex.Matcher m = java.util.regex.Pattern.compile("(?m)^\\s*touch_config_file\\s+\"([^\"]+)\"").matcher(new String(readAll(cfg), "UTF-8"));
+                String f = null;
+                while (m.find()) f = m.group(1);
+                if (f != null && f.matches("[A-Za-z0-9_./-]{1,80}") && !f.contains("..") && !f.startsWith("/")) return f;
+            }
+        } catch (Exception ignored) {
+        }
+        return "touch.cfg";
+    }
+
     private String touchPresetArg() {
         SharedPreferences p = prefs();
         String lay = p.getString("touchlay", "pro");
         String applied = p.getString("touch_applied", "");
-        File tc = new File(baseDir(), "cstrike/touch.cfg");
+        // dvijok tugmalarni touch_config_file dagi fayldan o'qiydi (odatda touch_profiles/phone_ahsim.cfg, touch.cfg emas!)
+        String active = activeTouchFile();
+        File tc = new File(baseDir(), "cstrike/" + active);
         try {
             File pd = new File(baseDir(), "cstrike/touch_presets");
             pd.mkdirs();
@@ -606,14 +623,14 @@ public class MainActivity extends Activity {
                     preset = bo.toString("UTF-8");
                 }
                 if (!preset.contains("+voicerecord")) preset += "\n" + TOUCH_VOICE;
-                out = preset + "touch_config_file \"touch.cfg\"\n";
+                out = preset + "touch_config_file \"" + active + "\"\n";
             } else if (!cur.contains("+voicerecord")) {
                 // touch_config_file qatoridan oldin qo'shamiz
                 int k = cur.lastIndexOf("touch_config_file");
                 out = k >= 0 ? cur.substring(0, k) + TOUCH_VOICE + cur.substring(k) : cur + "\n" + TOUCH_VOICE;
             }
             if (out != null) {
-                new File(baseDir(), "cstrike").mkdirs();
+                if (tc.getParentFile() != null) tc.getParentFile().mkdirs();
                 FileOutputStream fo = new FileOutputStream(tc);
                 fo.write(out.getBytes("UTF-8"));
                 fo.close();
@@ -721,6 +738,8 @@ public class MainActivity extends Activity {
                     // dvijok har ochilishda boshlang'ich tugmalarni qayta qo'ymasin (telefon o'yinni yopganda
                     // config.cfg saqlanmay qolib, o'yinchi joylashtirgan tugmalar va ovoz tugmasi o'chib ketardi)
                     {"bt_touch_layout", "5"},
+                    // HUD (TAB jadvali, pul, HP) kompyuterdagi 1024 kenglikdagidek o'lchamda - telefonda mayda bo'lmasin
+                    {"hud_scale", "1024"},
                     // tarmoq: o'qlar aniq hisoblanishi uchun (server o'z chegarasigacha cheklaydi)
                     {"rate", "100000"},
                     {"cl_updaterate", "101"},

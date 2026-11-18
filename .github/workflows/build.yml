@@ -847,7 +847,7 @@ jobs:
               ('AddButton( L( "GameUI_Joystick" ), L( "Change gamepad axis and button settings" ), PC_GAMEPAD, UI_GamePad_Menu );', '')])
           # "Video" -> to'g'ridan-to'g'ri video sozlamalari (ekran rejimlari telefonda kerak emas)
           drop(m + 'Configuration.cpp', [('PC_VIDEO, UI_Video_Menu', 'PC_VIDEO, UI_VidOptions_Menu')])
-          drop(m + 'VideoOptions.cpp', [('\tAddItem( %s );' % x, '') for x in ['detailtex', 'vbo', 'swwater', 'overbright', 'filtering', 'testImage']])
+          drop(m + 'VideoOptions.cpp', [('\tAddItem( %s );' % x, '') for x in ['detailtex', 'vbo', 'swwater', 'overbright', 'filtering', 'testImage', 'hudscale']])
           drop(m + 'Audio.cpp', [('\tAddItem( %s );' % x, '') for x in ['noDSP', 'useAlphaDSP', 'muteFocusLost']])
           # Fon: X CLIENT foni (ilova cstrike/resource/xc_BackgroundLayout.txt ni yozadi), versiya yozuvi chiqmasin
           drop('3rdparty/mainui_cpp/controls/BackgroundBitmap.cpp', [
@@ -862,6 +862,10 @@ jobs:
           drop('3rdparty/mainui_cpp/controls/Framework.cpp', [
               ('if( item && item == lastItem && !FBitSet( item->iFlags, QMF_NOTIFY ) && item->szStatusText != NULL )',
                'if( false && item )')])
+          # Komanda tanlash: xarita tavsifi yo'q bo'lsa bo'sh ramkali to'rtburchak chiqmasin
+          drop(m + 'client/JoinGame.cpp', [
+              ('text.SetText( L( "Cstrike_TitlesTXT_Map_Description_not_available" ) );', 'text.SetText( "" ); scroll.bDrawStroke = false;'),
+              ('\t\t\ttext.SetText( txt );\n', '\t\t\ttext.SetText( txt ); scroll.bDrawStroke = true;\n')])
           # Serverlar ro'yxati: kattaroq yozuv, filtrlar qatori olib tashlanib ro'yxat balandroq
           drop(m + 'ServerBrowser.cpp', [
               ('\tgameList.SetCharSize( QM_SMALLFONT );\n', '\tgameList.SetCharSize( QM_DEFAULTFONT );\n'),
