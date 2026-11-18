@@ -572,6 +572,14 @@ jobs:
               t = t.replace(a, b)
           t += '\nexec boosttop_bots.cfg\n'
           open(yc, 'w', encoding='utf-8').write(t); print('yapb.cfg patched')
+          # TAB jadvali: atrofidagi qo'shimcha qora ramka (touch burchak/chiziq bo'laklari) olib tashlanadi -
+          # jadvalning o'z foni qoladi (HUD masshtabi bilan ramka jadvalga mos tushmay, ikki qavat qora to'rtburchak chiqardi)
+          for fn in ['scoreboard_full.cfg', 'scoreboard_short.cfg', 'scoreboard_classic.cfg']:
+              fp = os.path.join(ea, 'touch', fn)
+              if not os.path.exists(fp): continue
+              t = open(fp, encoding='utf-8', errors='replace').read()
+              t2 = re.sub(r'(?m)^touch_addbutton\s+"_menu_corner\d+".*\n?', '', t)
+              open(fp, 'w', encoding='utf-8').write(t2); print('scoreboard frame removed:', fn, t != t2)
           # Ekrandagi ⚙ (touch_edit) tugmasi tugma muharririni emas, o'yin menyusini ochsin
           n_edit = 0
           for root, _, files in os.walk(ea):

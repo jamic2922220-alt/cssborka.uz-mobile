@@ -56,6 +56,11 @@
             </intent-filter>
         </receiver>
 
+        <!-- har ~3 soatda yangi versiya bormi - ovozli bildirishnoma -->
+        <receiver
+            android:name=".UpdCheckReceiver"
+            android:exported="false" />
+
         <activity
             android:name=".CZeroActivity"
             android:exported="false" />

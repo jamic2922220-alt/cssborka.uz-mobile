@@ -71,6 +71,7 @@ public class MainActivity extends Activity {
     private int dataSizeMb = 250;
     // avtomatik yangilanish: saytdagi mobile.json -> apk_build / apk_url
     private volatile int apkBuild = 0;
+    private boolean updAskedThisRun = false;
     private volatile String apkUrl = "";
     // yangiliklar: saytdagi mobile.json -> "news"
     private volatile JSONArray news = null;
@@ -393,6 +394,15 @@ public class MainActivity extends Activity {
         root.addView(foot);
 
         setContentView(root);
+        UpdCheckReceiver.schedule(this);
+        try {
+            if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission("android.permission.POST_NOTIFICATIONS") != PackageManager.PERMISSION_GRANTED
+                    && !prefs().getBoolean("notif_asked", false)) {
+                prefs().edit().putBoolean("notif_asked", true).apply();
+                requestPermissions(new String[]{"android.permission.POST_NOTIFICATIONS"}, 77);
+            }
+        } catch (Exception ignored) {
+        }
         loadConfig();
         registerInstallReceiver();
         sendStat("open", null);
@@ -584,11 +594,13 @@ public class MainActivity extends Activity {
     }
 
     // ---------------- PRO boshqaruv (tugmalar joylashuvi) ----------------
-    private static final String TOUCH_PRO = "// boost-top PRO boshqaruv: chap qo'lda ham O'Q tugmasi (o'ng barmoq nishonda qoladi)\ntouch_removeall\ntouch_pitch \"50\"\ntouch_yaw \"50\"\ntouch_precise_amount \"0.5\"\ntouch_move_indicator \"3\"\ntouch_addbutton \"move\" \"\" \"_move\" 0.000000 0.110000 0.480000 1.000000 255 255 255 150 0\ntouch_addbutton \"look\" \"\" \"_look\" 0.480000 0.110000 1.000000 1.000000 255 255 255 150 0\ntouch_addbutton \"attack_l\" \"touch/gfx/attack\" \"+attack\" 0.040000 0.300000 0.150000 0.500000 255 90 90 190 0 1\ntouch_addbutton \"attack\" \"touch/gfx/attack\" \"+attack\" 0.780000 0.420000 0.920000 0.670000 255 90 90 190 0 1\ntouch_addbutton \"attack2\" \"touch/gfx/attack2\" \"+attack2\" 0.680000 0.250000 0.770000 0.410000 255 255 255 170 0 1\ntouch_addbutton \"jump\" \"touch/gfx/jump\" \"+jump\" 0.910000 0.200000 1.000000 0.380000 255 255 255 160 0 1\ntouch_addbutton \"duck\" \"touch/gfx/duck\" \"+duck\" 0.900000 0.700000 1.000000 0.880000 255 255 255 160 512 1\ntouch_addbutton \"reload\" \"touch/gfx/reload\" \"+reload\" 0.800000 0.720000 0.890000 0.880000 255 255 255 160 0 1\ntouch_addbutton \"use\" \"touch/gfx/use\" \"+use\" 0.920000 0.400000 1.000000 0.540000 255 255 255 150 0 1\ntouch_addbutton \"w1\" \"touch/gfx/w_rifle\" \"slot1\" 0.100000 0.000000 0.160000 0.106667 255 255 255 150 0 1\ntouch_addbutton \"w2\" \"touch/gfx/w_pistol\" \"slot2\" 0.180000 0.000000 0.240000 0.106667 255 255 255 150 0 1\ntouch_addbutton \"w3\" \"touch/gfx/w_knife\" \"slot3\" 0.260000 0.000000 0.320000 0.106667 255 255 255 150 0 1\ntouch_addbutton \"w4\" \"touch/gfx/w_grenade\" \"slot4\" 0.340000 0.000000 0.400000 0.106667 255 255 255 150 0 1\ntouch_addbutton \"w5\" \"touch/gfx/w_c4\" \"slot5\" 0.660000 0.000000 0.720000 0.106667 255 255 255 150 0 1\ntouch_addbutton \"buy\" \"touch/gfx/buy\" \"buy\" 0.460000 0.860000 0.540000 1.000000 255 255 255 150 0 1\ntouch_addbutton \"score\" \"touch/gfx/score\" \"scoreboard\" 0.920000 0.000000 1.000000 0.142222 255 255 255 150 0 1\ntouch_addbutton \"touch_edit\" \"touch/gfx/settings\" \"togglemenu\" 0.460000 0.000000 0.540000 0.142222 255 255 255 150 0 1\ntouch_addbutton \"drop\" \"touch/gfx/drop\" \"drop\" 0.580000 0.000000 0.640000 0.106667 255 255 255 150 0 1\ntouch_addbutton \"chat\" \"touch/gfx/chat_all\" \"messagemode\" 0.000000 0.000000 0.060000 0.106667 255 255 255 150 0 1\ntouch_addbutton \"change_team\" \"touch/gfx/change_team\" \"chooseteam\" 0.000000 0.130000 0.060000 0.240000 255 255 255 150 0 1\ntouch_addbutton \"radio\" \"touch/gfx/radio\" \"showvguimenu 38\" 0.740000 0.000000 0.800000 0.106667 255 255 255 150 0 1\ntouch_addbutton \"walk\" \"touch/gfx/walk\" \"+speed\" 0.180000 0.800000 0.270000 0.960000 255 255 255 140 0 1\ntouch_addbutton \"invprev\" \"touch/gfx/left\" \"invprev\" 0.000000 0.560000 0.060000 0.660000 255 255 255 150 0 1\ntouch_addbutton \"invnext\" \"touch/gfx/right\" \"invnext\" 0.000000 0.680000 0.060000 0.780000 255 255 255 150 0 1\ntouch_addbutton \"voicechat\" \"touch/gfx/voicechat\" \"+voicerecord\" 0.810000 0.140000 0.890000 0.280000 255 255 255 160 0 1\n";
+    private static final String TOUCH_PRO = "// boost-top PRO boshqaruv: chap qo'lda ham O'Q tugmasi (o'ng barmoq nishonda qoladi)\ntouch_removeall\ntouch_pitch \"50\"\ntouch_yaw \"50\"\ntouch_precise_amount \"0.5\"\ntouch_move_indicator \"3\"\ntouch_addbutton \"move\" \"\" \"_move\" 0.000000 0.110000 0.480000 1.000000 255 255 255 150 0\ntouch_addbutton \"look\" \"\" \"_look\" 0.480000 0.110000 1.000000 1.000000 255 255 255 150 0\ntouch_addbutton \"attack_l\" \"touch/gfx/attack\" \"+attack\" 0.040000 0.300000 0.150000 0.500000 255 90 90 190 0 1\ntouch_addbutton \"attack\" \"touch/gfx/attack\" \"+attack\" 0.780000 0.420000 0.920000 0.670000 255 90 90 190 0 1\ntouch_addbutton \"attack2\" \"touch/gfx/attack2\" \"+attack2\" 0.680000 0.250000 0.770000 0.410000 255 255 255 170 0 1\ntouch_addbutton \"jump\" \"touch/gfx/jump\" \"+jump\" 0.910000 0.200000 1.000000 0.380000 255 255 255 160 0 1\ntouch_addbutton \"duck\" \"touch/gfx/duck\" \"+duck\" 0.900000 0.700000 1.000000 0.880000 255 255 255 160 512 1\ntouch_addbutton \"reload\" \"touch/gfx/reload\" \"+reload\" 0.800000 0.720000 0.890000 0.880000 255 255 255 160 0 1\ntouch_addbutton \"use\" \"touch/gfx/use\" \"+use\" 0.920000 0.400000 1.000000 0.540000 255 255 255 150 0 1\ntouch_addbutton \"w1\" \"touch/gfx/w_rifle\" \"slot1\" 0.100000 0.000000 0.160000 0.106667 255 255 255 150 0 1\ntouch_addbutton \"w2\" \"touch/gfx/w_pistol\" \"slot2\" 0.180000 0.000000 0.240000 0.106667 255 255 255 150 0 1\ntouch_addbutton \"w3\" \"touch/gfx/w_knife\" \"slot3\" 0.260000 0.000000 0.320000 0.106667 255 255 255 150 0 1\ntouch_addbutton \"w4\" \"touch/gfx/w_grenade\" \"slot4\" 0.340000 0.000000 0.400000 0.106667 255 255 255 150 0 1\ntouch_addbutton \"w5\" \"touch/gfx/w_c4\" \"slot5\" 0.660000 0.000000 0.720000 0.106667 255 255 255 150 0 1\ntouch_addbutton \"buy\" \"touch/gfx/buy\" \"buy\" 0.460000 0.860000 0.540000 1.000000 255 255 255 150 0 1\ntouch_addbutton \"score\" \"touch/gfx/score\" \"scoreboard\" 0.920000 0.000000 1.000000 0.142222 255 255 255 150 0 1\ntouch_addbutton \"touch_edit\" \"touch/gfx/settings\" \"togglemenu\" 0.460000 0.000000 0.540000 0.142222 255 255 255 150 0 1\ntouch_addbutton \"drop\" \"touch/gfx/drop\" \"drop\" 0.580000 0.000000 0.640000 0.106667 255 255 255 150 0 1\ntouch_addbutton \"chat\" \"touch/gfx/chat_all\" \"messagemode\" 0.000000 0.000000 0.060000 0.106667 255 255 255 150 0 1\ntouch_addbutton \"change_team\" \"touch/gfx/change_team\" \"chooseteam\" 0.000000 0.130000 0.060000 0.240000 255 255 255 150 0 1\ntouch_addbutton \"radio\" \"touch/gfx/radio\" \"showvguimenu 38\" 0.740000 0.000000 0.800000 0.106667 255 255 255 150 0 1\ntouch_addbutton \"walk\" \"touch/gfx/walk\" \"+speed\" 0.180000 0.800000 0.270000 0.960000 255 255 255 140 0 1\ntouch_addbutton \"tedit\" \"touch/gfx/hud_edit\" \"touch_enableedit\" 0.000000 0.560000 0.060000 0.660000 255 210 60 170 0 1\ntouch_addbutton \"voicechat\" \"touch/gfx/voicechat\" \"+voicerecord\" 0.810000 0.140000 0.890000 0.280000 255 255 255 160 0 1\n";
     // ovozli chat tugmasi (eski o'yinchilarga joylashuvini buzmasdan qo'shiladi)
     private static final String TOUCH_VOICE = "touch_addbutton \"voicechat\" \"touch/gfx/voicechat\" \"+voicerecord\" 0.810000 0.140000 0.890000 0.280000 255 255 255 160 0 1\n";
     private static final String TOUCH_V = "|v3";
     // bot menyusi (o'z serverida bot qo'shish / olib tashlash / darajasi)
+    // tugmalarni surib joylashtirish (muharrir) tugmasi
+    private static final String TOUCH_EDIT = "touch_addbutton \"tedit\" \"touch/gfx/hud_edit\" \"touch_enableedit\" 0.000000 0.560000 0.060000 0.660000 255 210 60 170 0 1\n";
     private static final String TOUCH_BOTMENU = "touch_addbutton \"botmenu\" \"touch/gfx/botmenu\" \"yb menu\" 0.070000 0.130000 0.130000 0.240000 255 255 255 150 0 1\n";
 
     /** Boshqaruv tugmalarini o'yinning o'z fayliga (cstrike/touch.cfg) yozamiz.
@@ -609,6 +621,16 @@ public class MainActivity extends Activity {
         } catch (Exception ignored) {
         }
         return "touch.cfg";
+    }
+
+    /** Chap/o'ng (invprev/invnext) strelkalarni olib tashlaydi; ovoz, muharrir, bot menyusi tugmalari yo'q bo'lsa qo'shadi. */
+    private static String fixTouch(String c) {
+        c = c.replaceAll("(?m)^\\s*touch_addbutton\\s+\"(invprev|invnext)\"[^\\n]*\\n?", "");
+        String add = (c.contains("+voicerecord") ? "" : TOUCH_VOICE) + (c.contains("touch_enableedit") ? "" : TOUCH_EDIT) + (c.contains("yb menu") ? "" : TOUCH_BOTMENU);
+        if (add.length() == 0) return c;
+        int k = c.lastIndexOf("touch_config_file");
+        if (!c.endsWith("\n") && k < 0) c += "\n";
+        return k >= 0 ? c.substring(0, k) + add + c.substring(k) : c + add;
     }
 
     private String touchPresetArg() {
@@ -641,17 +663,31 @@ public class MainActivity extends Activity {
                 if (!preset.contains("+voicerecord")) preset += "\n" + TOUCH_VOICE;
                 if (!preset.contains("yb menu")) preset += TOUCH_BOTMENU;
                 out = preset + "touch_config_file \"" + active + "\"\n";
-            } else if (!cur.contains("+voicerecord") || !cur.contains("yb menu")) {
-                String add = (cur.contains("+voicerecord") ? "" : TOUCH_VOICE) + (cur.contains("yb menu") ? "" : TOUCH_BOTMENU);
-                // touch_config_file qatoridan oldin qo'shamiz
-                int k = cur.lastIndexOf("touch_config_file");
-                out = k >= 0 ? cur.substring(0, k) + add + cur.substring(k) : cur + "\n" + add;
             }
             if (out != null) {
                 if (tc.getParentFile() != null) tc.getParentFile().mkdirs();
                 FileOutputStream fo = new FileOutputStream(tc);
-                fo.write(out.getBytes("UTF-8"));
+                fo.write(fixTouch(out).getBytes("UTF-8"));
                 fo.close();
+            }
+            // qaysi profil faol bo'lishidan qat'i nazar: hamma tugmalar fayllarida ovoz, muharrir va bot tugmalari bo'lsin
+            java.util.List<File> all = new java.util.ArrayList<File>();
+            all.add(tc);
+            all.add(new File(baseDir(), "cstrike/touch.cfg"));
+            for (String d : new String[]{"cstrike/touch_profiles", "cstrike/touch_presets"}) {
+                File[] fs = new File(baseDir(), d).listFiles();
+                if (fs != null) for (File f : fs) if (f.getName().endsWith(".cfg")) all.add(f);
+            }
+            for (File f : all) {
+                if (!f.exists()) continue;
+                String c = new String(readAll(f), "UTF-8");
+                if (!c.contains("touch_addbutton")) continue;
+                String c2 = fixTouch(c);
+                if (!c2.equals(c)) {
+                    FileOutputStream fo = new FileOutputStream(f);
+                    fo.write(c2.getBytes("UTF-8"));
+                    fo.close();
+                }
             }
             p.edit().putString("touch_applied", lay + TOUCH_V).apply();
         } catch (Exception ignored) {
@@ -678,7 +714,7 @@ public class MainActivity extends Activity {
     /** Tarjima tuzatishlari (o'yin arxividagi fayllar ustidan, arxivni qayta yuklamasdan; versiya o'zgarganda yoziladi):
      *  o'zbekcha - ~230 qator inglizcha qolgan edi (jamoa va qurol tavsiflari, yordamchi maslahatlar, radio);
      *  ruscha - HUD (Деньги, HP, Набор), "Покинуть игру" va MOTD oynasi tugmalari faylda umuman yo'q edi. */
-    private static final int LOC_VER = 2;
+    private static final int LOC_VER = 3;
     private static final String[][] LOC_FILES = {
             {"xc_loc/cstrike_uzbek.txt", "cstrike/resource/cstrike_uzbek.txt"},
             {"xc_loc/cstrike_russian.txt", "cstrike/resource/cstrike_russian.txt"},
@@ -2437,6 +2473,11 @@ public class MainActivity extends Activity {
                         @Override
                         public void run() {
                             render();
+                            // ilova ochilganda: yangi versiya bo'lsa - darrov oyna (har ochilishda bir marta)
+                            if (apkBuild > myBuild() && apkUrl.length() > 0 && !updAskedThisRun && !isFinishing()) {
+                                updAskedThisRun = true;
+                                confirmSelfUpdate();
+                            }
                         }
                     });
                 } catch (Exception ignored) {

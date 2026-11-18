@@ -172,6 +172,27 @@ int CHudMenu :: MsgFunc_ShowMenu( const char *pszName, int iSize, void *pbuf )
 
 	menustring = reader.ReadString();
 
+	// X CLIENT: server eski uslubdagi (matnli) komanda/klass menyusini yuborsa ham - botlardagidek
+	// chiroyli oynani ko'rsatamiz (raqamli panel emas). jointeam / joinclass serverda baribir ishlaydi.
+	if( !m_fWaitingForMore && g_pMenu && !UseOldTouchMenusEnabled() )
+	{
+		if( !strncmp( menustring, "#Team_Select", 12 ) || !strncmp( menustring, "#IG_Team_Select", 15 ) )
+		{
+			ShowVGUIMenu( MENU_TEAM );
+			return 1;
+		}
+		if( !strncmp( menustring, "#Terrorist_Select", 17 ) )
+		{
+			ShowVGUIMenu( MENU_CLASS_T );
+			return 1;
+		}
+		if( !strncmp( menustring, "#CT_Select", 10 ) )
+		{
+			ShowVGUIMenu( MENU_CLASS_CT );
+			return 1;
+		}
+	}
+
 	// menu will be replaced by scripted touch config
 	// so execute it and exit
 	if( _extended_menus->value != 0.0f )
