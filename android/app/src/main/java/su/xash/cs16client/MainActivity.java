@@ -212,6 +212,16 @@ public class MainActivity extends Activity {
                 {"off_t", "Internet yo'qmi? Muammo emas", "Нет интернета? Не проблема", "No internet? No problem"},
                 {"off_s", "Botlar bilan o'yna - internet kerak emas", "Играйте с ботами - интернет не нужен", "Play with bots - no internet needed"},
                 {"off_b", "Botlar bilan", "С ботами", "With bots"},
+                {"acc_tglink", "Telegram'ni ulash", "Подключить Telegram", "Connect Telegram"},
+                {"acc_tglinked", "Telegram allaqachon ulangan - endi Telegram orqali kira olasiz", "Telegram уже подключён - можно входить через Telegram", "Telegram is already connected - you can sign in via Telegram"},
+                {"acc_tglinkgo", "Telegram ochildi - «Start» ni bosing. Ulangach sandiq sovg'a!", "Открылся Telegram - нажмите «Start». После подключения - сундук в подарок!", "Telegram opened - tap «Start». You get a chest once connected!"},
+                {"bot_t", "Botlar bilan mashq", "Тренировка с ботами", "Practice with bots"},
+                {"bot_s", "Internet kerak emas - o'zingga mos qiyinlikni tanla", "Интернет не нужен - выберите сложность", "No internet needed - pick a difficulty"},
+                {"bot_b", "O'ynash", "Играть", "Play"},
+                {"bot_lv", "Botlar darajasi", "Сложность ботов", "Bot difficulty"},
+                {"bot_l0", "Oson", "Лёгкие", "Easy"},
+                {"bot_l1", "O'rta", "Средние", "Medium"},
+                {"bot_l2", "Qiyin", "Сложные", "Hard"},
         };
         int col = "ru".equals(lang) ? 2 : ("en".equals(lang) ? 3 : 1);
         for (String[] row : tr) if (row[0].equals(key)) return row[col];
@@ -1216,7 +1226,7 @@ public class MainActivity extends Activity {
 
     /** Profil: rasm, ism, nik rangi - kompyuterdagi menyu bilan umumiy. */
     private void showProfile() {
-        final String[] items = {t("acc_pic"), t("acc_picdel"), t("acc_name"), t("acc_nc")};
+        final String[] items = {t("acc_pic"), t("acc_picdel"), t("acc_name"), t("acc_nc"), t("acc_tglink")};
         new AlertDialog.Builder(this).setTitle(t("acc_prof")).setItems(items, new android.content.DialogInterface.OnClickListener() {
             @Override
             public void onClick(android.content.DialogInterface d, int w) {
@@ -1228,7 +1238,8 @@ public class MainActivity extends Activity {
                     }
                 } else if (w == 1) accEdit("a=avatar&img=none");
                 else if (w == 2) showNameEdit();
-                else showNickColor();
+                else if (w == 3) showNickColor();
+                else accTgLink();
             }
         }).setNegativeButton(t("cancel"), null).show();
     }
@@ -1369,6 +1380,71 @@ public class MainActivity extends Activity {
         }).start();
     }
 
+    /** Telegram'ni akkauntga ulash (keyin ilovaga "Telegram orqali" parolsiz kiriladi, eslatmalar ham keladi). */
+    private void accTgLink() {
+        final String tok = accToken();
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                String msg, link = null;
+                try {
+                    JSONObject r = xcPost("a=tg_code&token=" + enc(tok));
+                    if (!r.optBoolean("ok")) msg = r.optString("msg", t("acc_err"));
+                    else if (r.optBoolean("linked")) msg = t("acc_tglinked");
+                    else if (r.optString("link").startsWith("https://t.me/")) { link = r.optString("link"); msg = t("acc_tglinkgo"); }
+                    else msg = t("acc_err");
+                } catch (Exception e) {
+                    msg = t("acc_err");
+                }
+                final String m = msg, l = link;
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        toastLike(m);
+                        if (l != null) openUrl(l);
+                    }
+                });
+            }
+        }).start();
+    }
+
+    /** Bosh ekranda doim: botlar bilan mashq (internetsiz), qiyinlik tanlanadi. */
+    private View botsCard() {
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.HORIZONTAL);
+        card.setGravity(Gravity.CENTER_VERTICAL);
+        card.setPadding(dp(14), dp(10), dp(14), dp(10));
+        card.setBackground(round(C_CARD, 12, C_LINE));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        lp.setMargins(0, dp(2), 0, dp(8));
+        card.setLayoutParams(lp);
+        LinearLayout tx = new LinearLayout(this);
+        tx.setOrientation(LinearLayout.VERTICAL);
+        tx.addView(text(t("bot_t"), 15, C_TEXT, true));
+        tx.addView(text(t("bot_s"), 12, C_MUTED, false));
+        card.addView(tx, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        Button b = button(t("bot_b"), 0xFFB07A10);
+        b.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                showBotLevel();
+            }
+        });
+        card.addView(b);
+        return card;
+    }
+
+    private void showBotLevel() {
+        String[] lv = {t("bot_l0"), t("bot_l1"), t("bot_l2")};
+        new AlertDialog.Builder(this).setTitle(t("bot_lv")).setItems(lv, new android.content.DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(android.content.DialogInterface d, int w) {
+                prefs().edit().putInt("botlv", w).apply();
+                launchBots();
+            }
+        }).setNegativeButton(t("cancel"), null).show();
+    }
+
     /** Internet yoki sayt ishlamasa: botlar bilan o'yin (o'yin fayllari telefonda, internet kerak emas). */
     private View offlineCard() {
         LinearLayout card = new LinearLayout(this);
@@ -1401,7 +1477,7 @@ public class MainActivity extends Activity {
             return;
         }
         writeSettings();
-        String argv = "-log -dll @yapb +exec boosttop_settings.cfg" + touchPresetArg() + " +sv_lan 1 +maxplayers 10 +yb_quota 5 +yb_difficulty 1 +map de_dust2";
+        String argv = "-log -dll @yapb +exec boosttop_settings.cfg" + touchPresetArg() + " +sv_lan 1 +maxplayers 10 +yb_quota 5 +yb_difficulty " + new int[]{0, 2, 3}[Math.max(0, Math.min(2, prefs().getInt("botlv", 1)))] + " +map de_dust2";
         try {
             startActivity(new Intent().setComponent(new ComponentName(getPackageName(), "su.xash.engine.XashActivity"))
                     .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK)
@@ -2179,6 +2255,7 @@ public class MainActivity extends Activity {
         if (!setupDone() || downloading) content.addView(setupCard());
         content.addView(accountCard());
         if (netDown && hasData()) content.addView(offlineCard());
+        else if (hasData() && !downloading) content.addView(botsCard());
         addNews();
 
         status = text("", 13, C_MUTED, false);
