@@ -849,6 +849,19 @@ jobs:
               ('\t// try 25\'th anniversary update background first\n\tif( FBitSet(',
                '\tafile = (char *)EngFuncs::COM_LoadFile( "resource/xc_BackgroundLayout.txt" );\n\t// try 25\'th anniversary update background first\n\tif( !afile && FBitSet('),
               ('\tEngFuncs::engfuncs.pfnDrawConsoleString( stringLen * 0.05f, ScreenHeight - charH * 1.05f, version );', '')])
+          # Kompyuterdagi CS 1.6 kabi: tugmalar yonida/pastida izoh matnlari chiqmasin
+          # (telefonda oxirgi bosilgan tugma "tanlangan" bo'lib qolib, yonida yozuv osilib turardi)
+          drop('3rdparty/mainui_cpp/controls/PicButton.cpp', [
+              ('if( szStatusText && FBitSet( iFlags, QMF_NOTIFY ) && !FBitSet( gMenu.m_gameinfo.flags, GFL_NOSKILLS ))',
+               'if( false && szStatusText )')])
+          drop('3rdparty/mainui_cpp/controls/Framework.cpp', [
+              ('if( item && item == lastItem && !FBitSet( item->iFlags, QMF_NOTIFY ) && item->szStatusText != NULL )',
+               'if( false && item )')])
+          # Serverlar ro'yxati: kattaroq yozuv, filtrlar qatori olib tashlanib ro'yxat balandroq
+          drop(m + 'ServerBrowser.cpp', [
+              ('\tgameList.SetCharSize( QM_SMALLFONT );\n', '\tgameList.SetCharSize( QM_DEFAULTFONT );\n'),
+              ('\tgameList.SetSize( -20, 465 );', '\tgameList.SetSize( -20, 465 + 30 );'),
+              ('\tAddItem( filterPing );\n\tAddItem( filterEmpty );\n\tAddItem( filterFull );\n\tAddItem( filterMap );\n', '')])
           PY
       - name: Setup Java (JetBrains 21)
         uses: actions/setup-java@v5
@@ -875,20 +888,20 @@ jobs:
           BT=$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)
           "$ANDROID_HOME/build-tools/$BT/apksigner" sign --ks boosttop.jks --ks-key-alias boosttop \
             --ks-pass env:KEYSTORE_PASSWORD --key-pass env:KEYSTORE_PASSWORD \
-            --out CS16-boosttop.apk CS16-cssborka.apk
-          "$ANDROID_HOME/build-tools/$BT/apksigner" verify --print-certs CS16-boosttop.apk | head -3
+            --out X-CLIENT.apk CS16-cssborka.apk
+          "$ANDROID_HOME/build-tools/$BT/apksigner" verify --print-certs X-CLIENT.apk | head -3
           rm -f boosttop.jks CS16-cssborka.apk
           echo "BUILD=${{ github.run_number }}" 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: CS16-boosttop-APK-build${{ github.run_number }}
-          path: android/CS16-boosttop.apk
+          name: X-CLIENT-APK-build${{ github.run_number }}
+          path: android/X-CLIENT.apk
       - name: Release (APK zip'siz)
         uses: softprops/action-gh-release@v2
         with:
           tag_name: build-${{ github.run_number }}
-          name: CS 1.6 boost-top - build ${{ github.run_number }}
+          name: X CLIENT - build ${{ github.run_number }}
           body: "Android APK (build ${{ github.run_number }}). mobile.json -> \"apk_build\": ${{ github.run_number }}"
-          files: android/CS16-boosttop.apk
+          files: android/X-CLIENT.apk
           make_latest: true

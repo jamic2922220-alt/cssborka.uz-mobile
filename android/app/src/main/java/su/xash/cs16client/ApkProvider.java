@@ -37,7 +37,7 @@ public class ApkProvider extends ContentProvider {
     public Cursor query(Uri uri, String[] projection, String selection, String[] args, String sort) {
         File f = apk();
         MatrixCursor c = new MatrixCursor(new String[]{"_display_name", "_size"});
-        c.addRow(new Object[]{"CS16-boosttop.apk", f.length()});
+        c.addRow(new Object[]{"X-CLIENT.apk", f.length()});
         return c;
     }
 
