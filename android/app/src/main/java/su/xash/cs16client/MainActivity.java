@@ -561,6 +561,13 @@ public class MainActivity extends Activity {
         return "";
     }
 
+
+    // ---------------- sozlamalar: til, sezgirlik, pritsel ----------------
+    private static final String[] LANGS = {"uz", "ru", "en"};
+    private static final String[] LANG_NAMES = {"O'zbekcha", "Русский", "English"};
+    private static final String[] XSIZES = {"auto", "small", "medium", "large"};
+    private static final int[] XCOLORS = {0xFF32FA32, 0xFFFA3232, 0xFF3232FA, 0xFFFAFA32, 0xFF32FAFA, 0xFFFFFFFF, 0xFFFA32FA};
+
     private SharedPreferences prefs() {
         return getSharedPreferences("boosttop", MODE_PRIVATE);
     }
