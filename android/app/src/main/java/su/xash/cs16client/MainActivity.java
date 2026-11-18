@@ -76,12 +76,12 @@ public class MainActivity extends Activity {
     private volatile JSONArray news = null;
 
     // ---------------- ranglar ----------------
-    private static final int C_BG = 0xFF0A1426;
-    private static final int C_CARD = 0xFF13213A;
-    private static final int C_LINE = 0xFF22385C;
-    private static final int C_TEXT = 0xFFEAF2FF;
-    private static final int C_MUTED = 0xFF9FB6D6;
-    private static final int C_ACCENT = 0xFF1E8CFF;
+    private static final int C_BG = 0xFF0F0A0E;
+    private static final int C_CARD = 0xFF1C1318;
+    private static final int C_LINE = 0xFF3A2428;
+    private static final int C_TEXT = 0xFFECE6EA;
+    private static final int C_MUTED = 0xFF9A8F98;
+    private static final int C_ACCENT = 0xFFE5333B;
     private static final int C_GOLD = 0xFFFFB21E;
     private static final int C_MAP = 0xFFF39A1E;
     private static final int C_PL = 0xFF8E5CF0;
@@ -137,6 +137,34 @@ public class MainActivity extends Activity {
                 {"fps", "FPS ni ko'rsatish", "Показывать FPS", "Show FPS"},
                 {"favs", "⭐ Mening serverlarim", "⭐ Мои серверы", "⭐ My servers"},
                 {"srv_add", "➕ Server qo'shish (IP)", "➕ Добавить сервер (IP)", "➕ Add server (IP)"},
+                {"sv_title", "Serverlar", "Серверы", "Servers"},
+                {"sv_open", "🌐 Serverlar", "🌐 Серверы", "🌐 Servers"},
+                {"sv_net", "Internet", "Интернет", "Internet"},
+                {"sv_fav", "Sevimlilar", "Избранное", "Favorites"},
+                {"sv_hist", "Tarix", "История", "History"},
+                {"sv_top", "X TOP", "X TOP", "X TOP"},
+                {"sv_search", "Qidirish: nom, IP yoki xarita", "Поиск: название, IP или карта", "Search: name, IP or map"},
+                {"sv_map", "Xarita", "Карта", "Map"},
+                {"sv_all", "hammasi", "все", "all"},
+                {"sv_ping", "Ping < 50", "Пинг < 50", "Ping < 50"},
+                {"sv_nempty", "Bo'sh emas", "Не пустые", "Not empty"},
+                {"sv_nfull", "To'la emas", "Не полные", "Not full"},
+                {"sv_quick", "Tez o'yin", "Быстрая игра", "Quick play"},
+                {"sv_col_srv", "SERVER", "СЕРВЕР", "SERVER"},
+                {"sv_col_pl", "O'YINCHI", "ИГРОКИ", "PLAYERS"},
+                {"sv_col_map", "XARITA", "КАРТА", "MAP"},
+                {"sv_col_ping", "PING", "ПИНГ", "PING"},
+                {"sv_count", "{s} ta server · {p} o'yinchi onlayn", "{s} серверов · {p} игроков онлайн", "{s} servers · {p} players online"},
+                {"sv_refresh", "Yangilash", "Обновить", "Refresh"},
+                {"sv_join", "▶ Kirish", "► Войти", "► Join"},
+                {"sv_tofav", "★ Sevimlilarga", "★ В избранное", "★ Favorite"},
+                {"sv_unfav", "☆ Olib tashlash", "☆ Убрать", "☆ Unfavorite"},
+                {"sv_copy", "Nusxa", "Копировать", "Copy"},
+                {"sv_copied", "IP nusxalandi", "IP скопирован", "IP copied"},
+                {"sv_players", "O'YINCHILAR", "ИГРОКИ", "PLAYERS"},
+                {"sv_none", "Bu yerda hozircha server yo'q", "Здесь пока нет серверов", "No servers here yet"},
+                {"sv_pick", "Avval serverni tanlang", "Сначала выберите сервер", "Select a server first"},
+                {"sv_noplayers", "Serverda hozir hech kim yo'q", "На сервере сейчас никого нет", "Nobody is on the server now"},
                 {"srv_add_msg", "Istalgan server IP manzilini yozing. U «Mening serverlarim»ga va o'yindagi «Избранное»ga qo'shiladi.", "Введите IP любого сервера. Он появится в «Мои серверы» и в «Избранное» в игре.", "Enter any server IP. It will appear in “My servers” and in the game's Favorites."},
                 {"srv_add_btn", "Qo'shish", "Добавить", "Add"},
                 {"srv_join_btn", "Qo'shish va kirish", "Добавить и войти", "Add and join"},
@@ -329,7 +357,7 @@ public class MainActivity extends Activity {
         LinearLayout foot = new LinearLayout(this);
         foot.setOrientation(LinearLayout.VERTICAL);
         foot.setPadding(dp(12), dp(8), dp(12), dp(12));
-        foot.setBackgroundColor(0xFF081020);
+        foot.setBackgroundColor(0xFF0B080B);
         Button play = button(t("play"), C_ACCENT);
         play.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -523,6 +551,7 @@ public class MainActivity extends Activity {
         // standart (begona) master-serverlarni o'chirib, o'zimiznikini qo'shamiz.
         String argv = "-log -dll @yapb +clearmasters +exec boosttop_ms.cfg +exec boosttop_settings.cfg" + touchPresetArg();
         if (ip != null) {
+            addHist(ip);
             argv += " +connect " + ip;
             sendStat("connect", ip);
         }
@@ -557,6 +586,11 @@ public class MainActivity extends Activity {
         String applied = p.getString("touch_applied", "");
         File tc = new File(baseDir(), "cstrike/touch.cfg");
         try {
+            File pd = new File(baseDir(), "cstrike/touch_presets");
+            pd.mkdirs();
+            FileOutputStream po = new FileOutputStream(new File(pd, "boosttop_pro.cfg"));
+            po.write(TOUCH_PRO.getBytes("UTF-8"));
+            po.close();
             String cur = tc.exists() ? new String(readAll(tc), "UTF-8") : "";
             String out = null;
             if (!tc.exists() || applied.length() == 0) {
@@ -684,6 +718,9 @@ public class MainActivity extends Activity {
                     {"voice_modenable", "1"},
                     {"voice_scale", "1"},
                     {"ui_prefer_won_background", "0"},
+                    // dvijok har ochilishda boshlang'ich tugmalarni qayta qo'ymasin (telefon o'yinni yopganda
+                    // config.cfg saqlanmay qolib, o'yinchi joylashtirgan tugmalar va ovoz tugmasi o'chib ketardi)
+                    {"bt_touch_layout", "5"},
                     // tarmoq: o'qlar aniq hisoblanishi uchun (server o'z chegarasigacha cheklaydi)
                     {"rate", "100000"},
                     {"cl_updaterate", "101"},
@@ -2083,6 +2120,574 @@ public class MainActivity extends Activity {
     }
 
     // ---------------- sevimli serverlar (telefonda saqlanadi) ----------------
+
+    // ================= Serverlar oynasi (kompyuterdagi X CLIENT "Серверы" oynasi kabi) =================
+    private static final int SV_BG = 0xFF141015, SV_PANEL = 0xFF1B1519, SV_ROW_SEL = 0xFF4A1A20, SV_RED = 0xFFE5333B, SV_HEAD = 0xFF7D7178;
+    private String svTab = "net", svQuery = "", svMap = "", svSel = null;
+    private boolean svPing = false, svNotEmpty = false, svNotFull = false;
+    private LinearLayout svList;
+    private TextView svCount;
+    private android.app.Dialog svDlg;
+    private final Map<String, TextView> svPingViews = new HashMap<String, TextView>();
+
+    private static String cleanName(String v) {
+        if (v == null) return "";
+        return v.replaceAll("[\\x00-\\x1f\\x7f-\\x9f\\ufffd\\u2580-\\u259f\\u25a0-\\u25ff]", " ").replaceAll("\\s{2,}", " ").trim();
+    }
+
+    private void addHist(String ip) {
+        try {
+            JSONArray h = new JSONArray(prefs().getString("hist", "[]"));
+            JSONArray n = new JSONArray();
+            n.put(ip);
+            for (int i = 0; i < h.length() && n.length() < 30; i++) if (!ip.equals(h.optString(i))) n.put(h.optString(i));
+            prefs().edit().putString("hist", n.toString()).apply();
+        } catch (Exception ignored) {
+        }
+    }
+
+    private TextView svChip(String label, boolean on) {
+        TextView c = text(label, 12, on ? Color.WHITE : C_TEXT, false);
+        c.setGravity(Gravity.CENTER);
+        c.setPadding(dp(12), dp(8), dp(12), dp(8));
+        c.setBackground(round(on ? SV_ROW_SEL : SV_PANEL, 3, on ? SV_RED : 0xFF3A3036));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        lp.setMargins(0, 0, dp(6), 0);
+        c.setLayoutParams(lp);
+        return c;
+    }
+
+    private void showServers() {
+        svDlg = new android.app.Dialog(this, android.R.style.Theme_Black_NoTitleBar_Fullscreen);
+        LinearLayout root = new LinearLayout(this);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setBackgroundColor(SV_BG);
+        svDlg.setContentView(root);
+        svDlg.setOnDismissListener(new android.content.DialogInterface.OnDismissListener() {
+            @Override
+            public void onDismiss(android.content.DialogInterface d) {
+                svDlg = null;
+                svList = null;
+                svPingViews.clear();
+            }
+        });
+        buildServers(root);
+        svDlg.show();
+        // ping natijalari kelgan sari yangilanadi
+        root.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                if (svDlg == null) return;
+                for (Map.Entry<String, TextView> e : svPingViews.entrySet()) svPingText(e.getKey(), e.getValue());
+                if (svList != null) svList.postDelayed(this, 1000);
+            }
+        }, 1000);
+    }
+
+    private void buildServers(final LinearLayout root) {
+        root.removeAllViews();
+        // sarlavha
+        LinearLayout head = new LinearLayout(this);
+        head.setGravity(Gravity.CENTER_VERTICAL);
+        head.setPadding(dp(14), dp(12), dp(8), dp(8));
+        ImageView logo = new ImageView(this);
+        logo.setImageResource(getResources().getIdentifier("ic_launcher", "mipmap", getPackageName()));
+        head.addView(logo, new LinearLayout.LayoutParams(dp(30), dp(30)));
+        TextView ttl = text(t("sv_title"), 20, Color.WHITE, false);
+        ttl.setPadding(dp(12), 0, 0, 0);
+        head.addView(ttl, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        TextView close = text("✕", 22, C_MUTED, false);
+        close.setPadding(dp(14), dp(4), dp(14), dp(4));
+        close.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (svDlg != null) svDlg.dismiss();
+            }
+        });
+        head.addView(close);
+        root.addView(head);
+
+        // yorliqlar
+        android.widget.HorizontalScrollView tsv = new android.widget.HorizontalScrollView(this);
+        tsv.setHorizontalScrollBarEnabled(false);
+        LinearLayout tabs = new LinearLayout(this);
+        tabs.setPadding(dp(8), 0, dp(8), 0);
+        final String[] TABS = {"net", "fav", "hist", "top"};
+        for (final String tk : TABS) {
+            String lb = t("sv_" + tk);
+            if (tk.equals("fav")) lb += " (" + favs().length() + ")";
+            LinearLayout tb = new LinearLayout(this);
+            tb.setOrientation(LinearLayout.VERTICAL);
+            TextView tt = text(lb, 14, tk.equals(svTab) ? Color.WHITE : C_MUTED, false);
+            tt.setPadding(dp(14), dp(10), dp(14), dp(10));
+            tb.addView(tt);
+            View ul = new View(this);
+            ul.setBackgroundColor(tk.equals(svTab) ? SV_RED : 0);
+            tb.addView(ul, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(2)));
+            if (tk.equals(svTab)) tb.setBackgroundColor(0xFF221A1F);
+            tb.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    svTab = tk;
+                    buildServers(root);
+                }
+            });
+            tabs.addView(tb);
+        }
+        tsv.addView(tabs);
+        root.addView(tsv);
+        View sep = new View(this);
+        sep.setBackgroundColor(0xFF2E2529);
+        root.addView(sep, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 1));
+
+        // qidiruv va filtrlar
+        LinearLayout fbox = new LinearLayout(this);
+        fbox.setOrientation(LinearLayout.VERTICAL);
+        fbox.setPadding(dp(12), dp(10), dp(12), dp(6));
+        final EditText q = new EditText(this);
+        q.setSingleLine(true);
+        q.setText(svQuery);
+        q.setHint(t("sv_search"));
+        q.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
+        q.setTextColor(C_TEXT);
+        q.setHintTextColor(0xFF7A6F76);
+        q.setPadding(dp(10), dp(8), dp(10), dp(8));
+        q.setBackground(round(SV_PANEL, 3, 0xFF3A3036));
+        q.addTextChangedListener(new android.text.TextWatcher() {
+            public void beforeTextChanged(CharSequence a, int b, int c, int d) {}
+            public void onTextChanged(CharSequence a, int b, int c, int d) {}
+            public void afterTextChanged(android.text.Editable e) {
+                svQuery = e.toString().trim();
+                fillServers();
+            }
+        });
+        fbox.addView(q);
+        android.widget.HorizontalScrollView fsv = new android.widget.HorizontalScrollView(this);
+        fsv.setHorizontalScrollBarEnabled(false);
+        LinearLayout chips = new LinearLayout(this);
+        chips.setPadding(0, dp(8), 0, 0);
+        TextView cMap = svChip(t("sv_map") + ": " + (svMap.length() > 0 ? svMap : t("sv_all")) + "  ▾", svMap.length() > 0);
+        cMap.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                final java.util.List<String> maps = new java.util.ArrayList<String>();
+                maps.add(t("sv_all"));
+                for (JSONObject sv : svAll()) {
+                    String m = sv.optString("map", "");
+                    if (m.length() > 0 && !maps.contains(m)) maps.add(m);
+                }
+                new AlertDialog.Builder(MainActivity.this, android.R.style.Theme_Material_Dialog)
+                        .setItems(maps.toArray(new String[0]), new android.content.DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(android.content.DialogInterface d, int w) {
+                                svMap = w == 0 ? "" : maps.get(w);
+                                buildServers(root);
+                            }
+                        }).show();
+            }
+        });
+        chips.addView(cMap);
+        final String[][] FL = {{"ping", t("sv_ping")}, {"ne", t("sv_nempty")}, {"nf", t("sv_nfull")}};
+        for (final String[] f : FL) {
+            boolean on = f[0].equals("ping") ? svPing : f[0].equals("ne") ? svNotEmpty : svNotFull;
+            TextView c = svChip(f[1], on);
+            c.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    if (f[0].equals("ping")) svPing = !svPing;
+                    else if (f[0].equals("ne")) svNotEmpty = !svNotEmpty;
+                    else svNotFull = !svNotFull;
+                    buildServers(root);
+                }
+            });
+            chips.addView(c);
+        }
+        TextView quick = text("⚡ " + t("sv_quick"), 12, Color.WHITE, true);
+        quick.setPadding(dp(14), dp(8), dp(14), dp(8));
+        quick.setBackground(round(SV_RED, 3, 0));
+        quick.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                JSONObject b = null;
+                int bs = -99999;
+                for (JSONObject sv : svAll()) {
+                    if (!sv.optBoolean("online", false)) continue;
+                    int pl = sv.optInt("players", 0), mx = sv.optInt("max", 32);
+                    if (pl >= mx) continue;
+                    Integer pg = pings.get(sv.optString("ip"));
+                    int sc = Math.min(pl, 28) * 10 - (pg == null || pg < 0 ? 300 : pg) / 4;
+                    if (sc > bs) { bs = sc; b = sv; }
+                }
+                if (b == null) toastLike(t("sv_none"));
+                else { if (svDlg != null) svDlg.dismiss(); launchGame(b.optString("ip")); }
+            }
+        });
+        chips.addView(quick);
+        fsv.addView(chips);
+        fbox.addView(fsv);
+        root.addView(fbox);
+
+        // ustun sarlavhalari
+        LinearLayout ch = new LinearLayout(this);
+        ch.setPadding(dp(12), dp(6), dp(12), dp(6));
+        TextView h1 = text("★   " + t("sv_col_srv"), 10, SV_HEAD, true);
+        ch.addView(h1, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        TextView h2 = text(t("sv_col_pl"), 10, SV_HEAD, true);
+        ch.addView(h2, new LinearLayout.LayoutParams(dp(78), ViewGroup.LayoutParams.WRAP_CONTENT));
+        TextView h4 = text(t("sv_col_ping"), 10, SV_HEAD, true);
+        h4.setGravity(Gravity.END);
+        ch.addView(h4, new LinearLayout.LayoutParams(dp(54), ViewGroup.LayoutParams.WRAP_CONTENT));
+        root.addView(ch);
+
+        ScrollView sc = new ScrollView(this);
+        svList = new LinearLayout(this);
+        svList.setOrientation(LinearLayout.VERTICAL);
+        sc.addView(svList);
+        root.addView(sc, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
+
+        // pastki panel
+        LinearLayout foot = new LinearLayout(this);
+        foot.setOrientation(LinearLayout.VERTICAL);
+        foot.setPadding(dp(12), dp(8), dp(12), dp(10));
+        foot.setBackgroundColor(0xFF110D11);
+        svCount = text("", 11, C_MUTED, false);
+        foot.addView(svCount);
+        LinearLayout fb = new LinearLayout(this);
+        fb.setPadding(0, dp(8), 0, 0);
+        String[][] BT = {{"add", "+ IP"}, {"ref", t("sv_refresh")}, {"join", t("sv_join")}};
+        for (final String[] b : BT) {
+            TextView bv = text(b[1], 13, Color.WHITE, b[0].equals("join"));
+            bv.setGravity(Gravity.CENTER);
+            bv.setPadding(dp(8), dp(11), dp(8), dp(11));
+            bv.setBackground(round(b[0].equals("join") ? SV_RED : SV_PANEL, 3, b[0].equals("join") ? 0 : 0xFF3A3036));
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, b[0].equals("join") ? 1.4f : 1f);
+            lp.setMargins(0, 0, b[0].equals("join") ? 0 : dp(6), 0);
+            bv.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    if (b[0].equals("add")) showAddServer();
+                    else if (b[0].equals("ref")) { loadServers(); if (svList != null) svList.postDelayed(new Runnable() { public void run() { fillServers(); } }, 2500); }
+                    else if (svSel == null) toastLike(t("sv_pick"));
+                    else { if (svDlg != null) svDlg.dismiss(); launchGame(svSel); }
+                }
+            });
+            fb.addView(bv, lp);
+        }
+        foot.addView(fb);
+        root.addView(foot);
+        fillServers();
+    }
+
+    /** Hamma ma'lum serverlar (bo'limlardan, takrorlanmasdan). */
+    private java.util.List<JSONObject> svAll() {
+        java.util.List<JSONObject> out = new java.util.ArrayList<JSONObject>();
+        java.util.HashSet<String> seen = new java.util.HashSet<String>();
+        JSONArray sections = lastData == null ? null : lastData.optJSONArray("sections");
+        if (sections != null) for (int i = 0; i < sections.length(); i++) {
+            JSONArray l = sections.optJSONObject(i) == null ? null : sections.optJSONObject(i).optJSONArray("servers");
+            if (l != null) for (int k = 0; k < l.length(); k++) {
+                JSONObject sv = l.optJSONObject(k);
+                if (sv != null && seen.add(sv.optString("ip"))) out.add(sv);
+            }
+        }
+        return out;
+    }
+
+    private boolean svPass(JSONObject sv) {
+        String ip = sv.optString("ip");
+        if (svQuery.length() > 0) {
+            String qq = svQuery.toLowerCase(Locale.ROOT);
+            if (!(cleanName(sv.optString("name")).toLowerCase(Locale.ROOT).contains(qq) || ip.contains(qq) || sv.optString("map").toLowerCase(Locale.ROOT).contains(qq))) return false;
+        }
+        if (svMap.length() > 0 && !svMap.equals(sv.optString("map"))) return false;
+        if (svNotEmpty && sv.optInt("players", 0) == 0) return false;
+        if (svNotFull && sv.optInt("players", 0) >= sv.optInt("max", 32)) return false;
+        if (svPing) {
+            Integer pg = pings.get(ip);
+            if (pg == null || pg < 0 || pg >= 50) return false;
+        }
+        return true;
+    }
+
+    private void fillServers() {
+        if (svList == null) return;
+        svList.removeAllViews();
+        svPingViews.clear();
+        String flagBase = lastData == null ? "http://mmb.boost-top.com/flag.php?c=" : lastData.optString("flag_url", "http://mmb.boost-top.com/flag.php?c=");
+        int nSrv = 0, nPl = 0;
+        java.util.List<Object[]> groups = new java.util.ArrayList<Object[]>();   // {sarlavha, nishon rangi, ro'yxat}
+        if (svTab.equals("net") || svTab.equals("top")) {
+            JSONArray sections = lastData == null ? null : lastData.optJSONArray("sections");
+            if (sections != null) for (int i = 0; i < sections.length(); i++) {
+                JSONObject s = sections.optJSONObject(i);
+                if (s == null) continue;
+                String key = s.optString("key", "");
+                if (svTab.equals("top") && !key.equals("top")) continue;
+                JSONArray l = s.optJSONArray("servers");
+                java.util.List<JSONObject> li = new java.util.ArrayList<JSONObject>();
+                if (l != null) for (int k = 0; k < l.length(); k++) if (l.optJSONObject(k) != null) li.add(l.optJSONObject(k));
+                String title = s.optString("title", "");
+                JSONObject titles = s.optJSONObject("titles");
+                if (titles != null && titles.has(lang)) title = titles.optString(lang, title);
+                groups.add(new Object[]{title, key.equals("vip") ? 0xFFD4A20F : key.equals("top") ? SV_RED : 0xFF6A5A62, li});
+            }
+        } else {
+            java.util.List<JSONObject> li = new java.util.ArrayList<JSONObject>();
+            if (svTab.equals("fav")) {
+                JSONObject fv = favs();
+                java.util.Iterator<String> it = fv.keys();
+                while (it.hasNext()) { String fip = it.next(); li.add(findServer(fip, fv.optString(fip, fip))); }
+            } else {
+                try {
+                    JSONArray h = new JSONArray(prefs().getString("hist", "[]"));
+                    for (int i = 0; i < h.length(); i++) li.add(findServer(h.optString(i), h.optString(i)));
+                } catch (Exception ignored) {
+                }
+            }
+            groups.add(new Object[]{null, 0, li});
+        }
+        java.util.HashSet<String> counted = new java.util.HashSet<String>();
+        for (Object[] g : groups) {
+            @SuppressWarnings("unchecked") java.util.List<JSONObject> li = (java.util.List<JSONObject>) g[2];
+            java.util.List<JSONObject> ok = new java.util.ArrayList<JSONObject>();
+            for (JSONObject sv : li) if (svPass(sv)) ok.add(sv);
+            if (ok.isEmpty()) continue;
+            if (g[0] != null) {
+                LinearLayout sh = new LinearLayout(this);
+                sh.setGravity(Gravity.CENTER_VERTICAL);
+                sh.setPadding(dp(12), dp(10), dp(12), dp(4));
+                TextView badge = text(String.valueOf(g[0]).toUpperCase(Locale.ROOT), 10, Color.WHITE, true);
+                badge.setPadding(dp(6), dp(1), dp(6), dp(1));
+                badge.setBackground(round((Integer) g[1], 2, 0));
+                sh.addView(badge);
+                svList.addView(sh);
+            }
+            for (JSONObject sv : ok) {
+                svList.addView(svRow(sv, flagBase));
+                if (counted.add(sv.optString("ip"))) { nSrv++; nPl += sv.optInt("players", 0); }
+            }
+        }
+        if (svList.getChildCount() == 0) {
+            TextView e = text(t("sv_none"), 13, C_MUTED, false);
+            e.setGravity(Gravity.CENTER);
+            e.setPadding(0, dp(40), 0, dp(40));
+            svList.addView(e);
+        }
+        if (svCount != null) svCount.setText(t("sv_count").replace("{s}", String.valueOf(nSrv)).replace("{p}", String.valueOf(nPl)));
+    }
+
+    private void svPingText(String ip, TextView pv) {
+        Integer ms = pings.get(ip);
+        if (ms == null) { pv.setText("…"); pv.setTextColor(C_MUTED); return; }
+        if (ms < 0) { pv.setText("—"); pv.setTextColor(C_MUTED); return; }
+        pv.setText("● " + ms);
+        pv.setTextColor(ms < 50 ? 0xFF6FD45A : ms < 100 ? 0xFFFFC94A : 0xFFFF5A4E);
+    }
+
+    private View svRow(final JSONObject sv, String flagBase) {
+        final String ip = sv.optString("ip");
+        final String nm = cleanName(sv.optString("name", ip));
+        boolean online = sv.optBoolean("online", false);
+        boolean sel = ip.equals(svSel);
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.VERTICAL);
+        row.setPadding(dp(10), dp(9), dp(12), dp(9));
+        row.setBackgroundColor(sel ? SV_ROW_SEL : 0xFF1E1418);
+        LinearLayout.LayoutParams rlp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        rlp.setMargins(0, 0, 0, 1);
+        row.setLayoutParams(rlp);
+        LinearLayout l1 = new LinearLayout(this);
+        l1.setGravity(Gravity.CENTER_VERTICAL);
+        final TextView star = text(isFav(ip) ? "★" : "★", 15, isFav(ip) ? C_GOLD : 0xFF5A4E55, false);
+        star.setPadding(0, 0, dp(8), 0);
+        star.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                toggleFavQuiet(ip, nm);
+                star.setTextColor(isFav(ip) ? C_GOLD : 0xFF5A4E55);
+            }
+        });
+        l1.addView(star);
+        ImageView flag = new ImageView(this);
+        flag.setAdjustViewBounds(true);
+        LinearLayout.LayoutParams flp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(11));
+        flp.setMargins(0, 0, dp(6), 0);
+        l1.addView(flag, flp);
+        loadFlag(sv.optString("cc", ""), flagBase, flag);
+        TextView name = text(nm, 13, online ? Color.WHITE : C_MUTED, false);
+        name.setSingleLine(true);
+        name.setEllipsize(TextUtils.TruncateAt.END);
+        l1.addView(name, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        // o'yinchilar: chiziq + son
+        LinearLayout plb = new LinearLayout(this);
+        plb.setGravity(Gravity.CENTER_VERTICAL);
+        int pl = sv.optInt("players", 0), mx = Math.max(1, sv.optInt("max", 32));
+        android.widget.FrameLayout bar = new android.widget.FrameLayout(this);
+        bar.setBackground(round(0xFF3A2C31, 2, 0));
+        View fill = new View(this);
+        fill.setBackground(round(SV_RED, 2, 0));
+        bar.addView(fill, new android.widget.FrameLayout.LayoutParams(Math.max(dp(2), dp(30) * Math.min(pl, mx) / mx), dp(3)));
+        plb.addView(bar, new LinearLayout.LayoutParams(dp(30), dp(3)));
+        TextView pls = text(online ? pl + "/" + sv.optInt("max", 32) : t("offline"), 12, C_TEXT, false);
+        pls.setPadding(dp(5), 0, 0, 0);
+        plb.addView(pls);
+        l1.addView(plb, new LinearLayout.LayoutParams(dp(78), ViewGroup.LayoutParams.WRAP_CONTENT));
+        TextView pv = text("…", 12, C_MUTED, false);
+        pv.setGravity(Gravity.END);
+        svPingViews.put(ip, pv);
+        svPingText(ip, pv);
+        l1.addView(pv, new LinearLayout.LayoutParams(dp(54), ViewGroup.LayoutParams.WRAP_CONTENT));
+        row.addView(l1);
+        TextView map = text(sv.optString("map", "") + "   ·   " + ip, 11, 0xFF8A7E86, false);
+        map.setPadding(dp(23), dp(2), 0, 0);
+        map.setSingleLine(true);
+        row.addView(map);
+        if (sel) {
+            View acc = new View(this);
+            acc.setBackgroundColor(SV_RED);
+        }
+        row.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                svSel = ip;
+                fillServers();
+                showServerInfo(sv);
+            }
+        });
+        return row;
+    }
+
+    private void toggleFavQuiet(String ip, String name) {
+        try {
+            JSONObject f = favs();
+            if (f.has(ip)) f.remove(ip); else f.put(ip, name);
+            prefs().edit().putString("favs", f.toString()).apply();
+        } catch (Exception ignored) {
+        }
+    }
+
+    /** Server tafsiloti: xarita rasmi, IP (nusxa), o'yinchilar ro'yxati, Kirish. */
+    private void showServerInfo(final JSONObject sv) {
+        final String ip = sv.optString("ip");
+        final String nm = cleanName(sv.optString("name", ip));
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setBackgroundColor(SV_PANEL);
+        box.setPadding(dp(14), dp(14), dp(14), dp(14));
+        android.widget.FrameLayout mp = new android.widget.FrameLayout(this);
+        mp.setBackground(round(0xFF2A2026, 4, 0));
+        final ImageView mimg = new ImageView(this);
+        mimg.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        mp.addView(mimg, new android.widget.FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        TextView mtag = text(sv.optString("map", "?"), 11, Color.WHITE, false);
+        mtag.setPadding(dp(7), dp(3), dp(7), dp(3));
+        mtag.setBackground(round(0xCC000000, 3, 0));
+        android.widget.FrameLayout.LayoutParams tlp = new android.widget.FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM | Gravity.START);
+        tlp.setMargins(dp(8), 0, 0, dp(8));
+        mp.addView(mtag, tlp);
+        box.addView(mp, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(150)));
+        final String mapn = sv.optString("map", "");
+        if (mapn.matches("[\\w\\-.]{2,40}")) new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    HttpURLConnection c = (HttpURLConnection) new URL("https://mmb.boost-top.com/map.php?m=" + enc(mapn.toLowerCase(Locale.ROOT))).openConnection();
+                    c.setConnectTimeout(8000);
+                    c.setReadTimeout(8000);
+                    final Bitmap b = BitmapFactory.decodeStream(c.getInputStream());
+                    c.disconnect();
+                    if (b != null) runOnUiThread(new Runnable() { public void run() { mimg.setImageBitmap(b); } });
+                } catch (Exception ignored) {
+                }
+            }
+        }).start();
+        TextView title = text(nm, 17, Color.WHITE, true);
+        title.setPadding(0, dp(10), 0, dp(6));
+        box.addView(title);
+        LinearLayout ipl = new LinearLayout(this);
+        TextView ipv = text(ip, 13, C_TEXT, false);
+        ipv.setPadding(dp(10), dp(8), dp(10), dp(8));
+        ipv.setBackground(round(0xFF120E11, 2, 0xFF3A3036));
+        ipv.setTextIsSelectable(true);
+        ipl.addView(ipv, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        TextView cp = text(t("sv_copy"), 12, 0xFFFF6A5A, true);
+        cp.setPadding(dp(12), dp(8), dp(12), dp(8));
+        cp.setBackground(round(0xFF3A1A1E, 2, 0xFF5A2A2E));
+        cp.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                try {
+                    ((android.content.ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE)).setPrimaryClip(android.content.ClipData.newPlainText("ip", ip));
+                    toastLike(t("sv_copied"));
+                } catch (Exception ignored) {
+                }
+            }
+        });
+        ipl.addView(cp);
+        box.addView(ipl);
+        LinearLayout ln = new LinearLayout(this);
+        ln.setPadding(0, dp(12), 0, dp(6));
+        ln.addView(text(t("sv_players") + "  " + sv.optInt("players", 0) + "/" + sv.optInt("max", 32), 13, Color.WHITE, true), new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        TextView pg = text("", 13, C_MUTED, false);
+        svPingText(ip, pg);
+        if (pings.get(ip) != null && pings.get(ip) >= 0) pg.setText("● " + pings.get(ip) + " ms");
+        ln.addView(pg);
+        box.addView(ln);
+        final LinearLayout plist = new LinearLayout(this);
+        plist.setOrientation(LinearLayout.VERTICAL);
+        plist.addView(text(t("loading"), 12, C_MUTED, false));
+        ScrollView psv = new ScrollView(this);
+        psv.addView(plist);
+        box.addView(psv, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(170)));
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                java.util.List<PlayerInfo> ps = null;
+                try { ps = queryPlayers(ip); } catch (Exception ignored) {}
+                final java.util.List<PlayerInfo> fps = ps;
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        plist.removeAllViews();
+                        if (fps == null || fps.isEmpty()) { plist.addView(text(t("sv_noplayers"), 12, C_MUTED, false)); return; }
+                        java.util.Collections.sort(fps, new java.util.Comparator<PlayerInfo>() {
+                            public int compare(PlayerInfo a, PlayerInfo b) { return b.score - a.score; }
+                        });
+                        for (PlayerInfo p : fps) {
+                            LinearLayout r = new LinearLayout(MainActivity.this);
+                            r.setPadding(0, dp(4), 0, dp(4));
+                            TextView a = text(cleanName(p.name).length() > 0 ? cleanName(p.name) : "...", 13, C_TEXT, false);
+                            a.setSingleLine(true);
+                            a.setEllipsize(TextUtils.TruncateAt.END);
+                            r.addView(a, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+                            int min = (int) (p.time / 60);
+                            r.addView(text(p.score + " · " + (min >= 60 ? (min / 60) + "h" : min + "'"), 12, C_MUTED, false));
+                            plist.addView(r);
+                        }
+                    }
+                });
+            }
+        }).start();
+        final AlertDialog d = new AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog)
+                .setView(box)
+                .setNegativeButton(isFav(ip) ? t("sv_unfav") : t("sv_tofav"), new android.content.DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(android.content.DialogInterface di, int w) {
+                        toggleFavQuiet(ip, nm);
+                        fillServers();
+                    }
+                })
+                .setPositiveButton(t("sv_join"), new android.content.DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(android.content.DialogInterface di, int w) {
+                        if (svDlg != null) svDlg.dismiss();
+                        launchGame(ip);
+                    }
+                })
+                .create();
+        d.show();
+    }
+
     /** Kompyuterdagidek: o'yinchi istalgan server IP sini qo'shadi (va xohlasa darrov kiradi). */
     private void showAddServer() {
         final EditText ed = new EditText(this);
@@ -2542,6 +3147,17 @@ public class MainActivity extends Activity {
         JSONArray sections = lastData.optJSONArray("sections");
         String flagBase = lastData.optString("flag_url", "http://mmb.boost-top.com/flag.php?c=");
         int shown = 0;
+        Button openSv = button(t("sv_open"), C_ACCENT);
+        openSv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+        openSv.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                showServers();
+            }
+        });
+        LinearLayout.LayoutParams olp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(46));
+        olp.setMargins(0, dp(6), 0, 0);
+        content.addView(openSv, olp);
         Button addSrv = button(t("srv_add"), C_LINE);
         addSrv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
         addSrv.setOnClickListener(new View.OnClickListener() {
