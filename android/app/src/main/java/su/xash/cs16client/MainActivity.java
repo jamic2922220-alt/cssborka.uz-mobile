@@ -359,6 +359,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+        reportGameIssues();
         presence = false;
         accLoad();
         render();
@@ -1203,6 +1204,116 @@ public class MainActivity extends Activity {
     }
 
     /** POST so'rov (token faqat POST da - manzillar loglarga tushmasin). Javob JSON. */
+    // ---------------- yiqilish va kirish hisobotlari (admin panel > Muammolar) ----------------
+    /** O'yin yiqilgan / qotgan (Android 11+ tizim yozuvi) yoki serverga kira olmagan bo'lsa - saytga yuboramiz.
+     *  Serverga kirish: engine.log da oxirgi "Connecting to" dan keyin "BT: in game" bo'lmasa - kirolmagan. */
+    private volatile boolean issuesBusy = false;
+    private void reportGameIssues() {
+        if (issuesBusy) return;
+        issuesBusy = true;
+        final String dev = deviceHash();
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    SharedPreferences p = prefs();
+                    String tail = logTail();
+                    if (Build.VERSION.SDK_INT >= 30) {
+                        android.app.ActivityManager am = (android.app.ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
+                        java.util.List<android.app.ApplicationExitInfo> l = am.getHistoricalProcessExitReasons(null, 0, 5);
+                        long last = p.getLong("exit_t", 0), max = last;
+                        if (last == 0) max = System.currentTimeMillis();       // birinchi marta: eskilarini yubormaymiz
+                        else for (android.app.ApplicationExitInfo e : l) {
+                            if (e.getTimestamp() <= last) continue;
+                            if (e.getTimestamp() > max) max = e.getTimestamp();
+                            int r = e.getReason();
+                            String k = r == android.app.ApplicationExitInfo.REASON_CRASH || r == android.app.ApplicationExitInfo.REASON_CRASH_NATIVE ? "mob_crash"
+                                    : r == android.app.ApplicationExitInfo.REASON_ANR ? "mob_anr"
+                                    : r == android.app.ApplicationExitInfo.REASON_LOW_MEMORY ? "mob_lowmem" : null;
+                            if (k == null) continue;
+                            String x = "r=" + r + (r == android.app.ApplicationExitInfo.REASON_CRASH_NATIVE ? "(native)" : "") + " desc=" + e.getDescription()
+                                    + " pss=" + (e.getPss() / 1024) + "MB " + phoneInfo() + " log=" + tail;
+                            sendProb(k, dev, x);
+                        }
+                        p.edit().putLong("exit_t", max).apply();
+                    }
+                    File log = new File(baseDir(), "engine.log");
+                    if (log.exists() && p.getInt("issues_v", 0) < 1) {        // eski dvijok yozgan logda "BT: in game" belgisi yo'q - o'tkazib yuboramiz
+                        p.edit().putInt("issues_v", 1).putLong("log_t", log.lastModified()).apply();
+                    }
+                    if (log.exists() && log.lastModified() > p.getLong("log_t", 0)) {
+                        p.edit().putLong("log_t", log.lastModified()).apply();
+                        String txt = new String(readAll(log), "UTF-8");
+                        int i = txt.lastIndexOf("Connecting to ");
+                        if (i >= 0 && txt.indexOf("BT: in game", i) < 0) {
+                            String after = txt.substring(i);
+                            String ip = after.substring(14, Math.min(after.length(), 60)).split("[.]{3}|\\s")[0];
+                            String lastLine = "";
+                            for (String ln : after.split("\n")) if (ln.trim().length() > 0) lastLine = ln.trim();
+                            // demo/lokal o'yin (botlar) emas
+                            if (!ip.startsWith("127.") && !ip.startsWith("localhost") && !ip.startsWith("loopback"))
+                                sendProb("mob_join", dev, "ip=" + ip + " files=" + count(after, "Downloading") + " fail=" + count(after, "failed")
+                                        + " last=" + (lastLine.length() > 150 ? lastLine.substring(0, 150) : lastLine) + " " + phoneInfo());
+                        }
+                    }
+                } catch (Throwable ignored) {
+                } finally {
+                    issuesBusy = false;
+                }
+            }
+        }).start();
+    }
+
+    private static int count(String s, String w) {
+        int n = 0, i = 0;
+        while ((i = s.indexOf(w, i)) >= 0) { n++; i += w.length(); }
+        return n;
+    }
+
+    private String phoneInfo() {
+        String ram = "";
+        try {
+            android.app.ActivityManager.MemoryInfo mi = new android.app.ActivityManager.MemoryInfo();
+            ((android.app.ActivityManager) getSystemService(Context.ACTIVITY_SERVICE)).getMemoryInfo(mi);
+            ram = (mi.totalMem >> 20) + "/" + (mi.availMem >> 20) + "MB";
+        } catch (Exception ignored) {
+        }
+        return "phone=" + Build.MANUFACTURER + " " + Build.MODEL + " android=" + Build.VERSION.SDK_INT + " ram=" + ram + " build=" + myBuild();
+    }
+
+    /** engine.log ning oxirgi 3 ta mazmunli qatori (yiqilish oldidan nima bo'lgan). */
+    private String logTail() {
+        try {
+            File log = new File(baseDir(), "engine.log");
+            if (!log.exists()) return "-";
+            java.io.RandomAccessFile f = new java.io.RandomAccessFile(log, "r");
+            long n = f.length(), from = Math.max(0, n - 4096);
+            byte[] b = new byte[(int) (n - from)];
+            f.seek(from);
+            f.readFully(b);
+            f.close();
+            String[] ls = new String(b, "UTF-8").split("\n");
+            StringBuilder sb = new StringBuilder();
+            int got = 0;
+            for (int i = ls.length - 1; i >= 0 && got < 3; i--) {
+                String t = ls[i].trim();
+                if (t.length() == 0) continue;
+                sb.insert(0, (t.length() > 120 ? t.substring(0, 120) : t) + (got > 0 ? " | " : ""));
+                got++;
+            }
+            return sb.toString();
+        } catch (Exception e) {
+            return "-";
+        }
+    }
+
+    private static void sendProb(String k, String dev, String x) {
+        try {
+            xcPost("a=prob&k=" + enc(k) + "&d=" + enc(dev) + "&x=" + enc(x.length() > 1000 ? x.substring(0, 1000) : x));
+        } catch (Exception ignored) {
+        }
+    }
+
     private static JSONObject xcPost(String params) throws Exception {
         HttpURLConnection c = (HttpURLConnection) new URL(XC_API).openConnection();
         c.setConnectTimeout(8000);

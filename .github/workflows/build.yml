@@ -170,6 +170,11 @@ jobs:
           				Cbuf_AddText( "retry\\n" );
           			}
           			return;""")
+          # ilova serverga kira olmaslikni aniqlashi uchun (engine.log): o'yinga to'liq kirildi
+          must("""		cls.state = ca_active;
+          		cls.changelevel = false;		// changelevel is done""", """		cls.state = ca_active;
+          		if( !cls.changelevel && !cls.demoplayback ) Con_Printf( "BT: in game\\n" );
+          		cls.changelevel = false;		// changelevel is done""")
           open(p, 'w', encoding='utf-8').write(s)
           print('cl_main.c patched (auto reconnect)')
           PY
