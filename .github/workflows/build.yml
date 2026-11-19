@@ -917,6 +917,8 @@ jobs:
             --out X-CLIENT.apk CS16-cssborka.apk
           "$ANDROID_HOME/build-tools/$BT/apksigner" verify --print-certs X-CLIENT.apk | head -3
           rm -f boosttop.jks CS16-cssborka.apk
+          # eski havolalar (cssborka.uz, launcher, eski ilovalar) "CS16-boosttop.apk" nomini so'raydi - ikkala nom bilan
+          cp X-CLIENT.apk CS16-boosttop.apk
           echo "BUILD=${{ github.run_number }}" 
       - name: Upload APK
         uses: actions/upload-artifact@v4
@@ -929,5 +931,7 @@ jobs:
           tag_name: build-${{ github.run_number }}
           name: X CLIENT - build ${{ github.run_number }}
           body: "Android APK (build ${{ github.run_number }}). mobile.json -> \"apk_build\": ${{ github.run_number }}"
-          files: android/X-CLIENT.apk
+          files: |
+            android/X-CLIENT.apk
+            android/CS16-boosttop.apk
           make_latest: true
