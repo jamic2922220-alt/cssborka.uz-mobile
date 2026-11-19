@@ -72,6 +72,8 @@ public class MainActivity extends Activity {
     // avtomatik yangilanish: saytdagi mobile.json -> apk_build / apk_url
     private volatile int apkBuild = 0;
     private boolean updAskedThisRun = false;
+    private volatile String apkMirror = "";   // zaxira manzil (GitHub ochilmasa / sekin bo'lsa)
+    private boolean updUsedMirror = false;
     private volatile String apkUrl = "";
     // yangiliklar: saytdagi mobile.json -> "news"
     private volatile JSONArray news = null;
@@ -2469,6 +2471,7 @@ public class MainActivity extends Activity {
                     dataSizeMb = j.optInt("data_size_mb", dataSizeMb);
                     apkBuild = j.optInt("apk_build", 0);
                     apkUrl = j.optString("apk_url", "");
+                    apkMirror = j.optString("apk_mirror", "");
                     Object nw = j.opt("news");
                     if (nw instanceof JSONArray) news = (JSONArray) nw;
                     else if (nw instanceof JSONObject) news = new JSONArray().put(nw);
@@ -3707,7 +3710,15 @@ public class MainActivity extends Activity {
 
     /** Xato bo'lsa ilovadan chiqarib yubormaymiz - tanlov beramiz. */
     private void showUpdateError(String err) {
-        sendStat("upderr", (err == null ? "?" : err) + " | " + Build.MANUFACTURER + " " + Build.MODEL + " | SDK " + Build.VERSION.SDK_INT);
+        final String fx = "err=" + err + " url=" + (updUsedMirror ? "mirror" : "main") + " to=" + apkBuild + " " + phoneInfo();
+        final String dv = deviceHash();
+        new Thread(new Runnable() { public void run() { sendProb("mob_upd", dv, fx); } }).start();
+        // asosiy manzil (GitHub) ishlamadi - bir marta zaxiradan avtomatik urinib ko'ramiz
+        if (!updUsedMirror && apkMirror.length() > 0 && err != null && !err.startsWith("status")) {
+            updUsedMirror = true;
+            startSelfUpdate();
+            return;
+        }
         try {
             new AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog)
                     .setTitle(t("upderr"))
@@ -3771,7 +3782,7 @@ public class MainActivity extends Activity {
         }
         updating = true;
         render();
-        final String url = apkUrl;
+        final String url = updUsedMirror && apkMirror.length() > 0 ? apkMirror : apkUrl;
         new Thread(new Runnable() {
             @Override
             public void run() {
