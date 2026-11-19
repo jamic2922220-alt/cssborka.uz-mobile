@@ -397,6 +397,7 @@ public class MainActivity extends Activity {
 
         setContentView(root);
         UpdCheckReceiver.schedule(this);
+        autoLiteForWeakPhone();
         try {
             if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission("android.permission.POST_NOTIFICATIONS") != PackageManager.PERMISSION_GRANTED
                     && !prefs().getBoolean("notif_asked", false)) {
@@ -791,6 +792,9 @@ public class MainActivity extends Activity {
                     {"gl_picmip", "low".equals(p.getString("gfx", "high")) ? "1" : "0"},
                     {"r_dynamic", "high".equals(p.getString("gfx", "high")) ? "1" : "0"},
                     {"fps_max", "low".equals(p.getString("gfx", "high")) ? "60" : "100"},
+                    // yengil grafika: xotirani tejash (serverlarning maxsus o'yinchi modellari yuklanmaydi, izlar kam)
+                    {"cl_minmodels", "low".equals(p.getString("gfx", "high")) ? "1" : "0"},
+                    {"r_decals", "low".equals(p.getString("gfx", "high")) ? "20" : "100"},
                     {"developer", "0"},
                     // ovozli chat: doim yoqilgan (tugmani bosib turib gapiriladi)
                     {"voice_enable", "1"},
@@ -1323,6 +1327,28 @@ public class MainActivity extends Activity {
     }
 
     /** POST so'rov (token faqat POST da - manzillar loglarga tushmasin). Javob JSON. */
+    /** Kuchsiz telefon (4 GB dan kam xotira): grafikani bir marta o'zi "yengil" qiladi - o'yin xotira yetmay yopilmasin.
+     *  O'yinchi keyin sozlamalarda o'zi o'zgartirsa, qayta tegmaymiz. */
+    private void autoLiteForWeakPhone() {
+        try {
+            SharedPreferences p = prefs();
+            if (p.getBoolean("lite_auto_done", false)) return;
+            android.app.ActivityManager am = (android.app.ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
+            android.app.ActivityManager.MemoryInfo mi = new android.app.ActivityManager.MemoryInfo();
+            am.getMemoryInfo(mi);
+            long mb = mi.totalMem >> 20;
+            boolean weak = mb > 0 && mb < 4500 || am.isLowRamDevice();
+            SharedPreferences.Editor e = p.edit().putBoolean("lite_auto_done", true);
+            if (weak && !"low".equals(p.getString("gfx", "high"))) {
+                e.putString("gfx", "low");
+                final String dev = deviceHash(), x = "ram=" + mb + "MB " + phoneInfo();
+                new Thread(new Runnable() { public void run() { sendProb("mob_lite", dev, x); } }).start();
+            }
+            e.apply();
+        } catch (Exception ignored) {
+        }
+    }
+
     // ---------------- yiqilish va kirish hisobotlari (admin panel > Muammolar) ----------------
     /** O'yin yiqilgan / qotgan (Android 11+ tizim yozuvi) yoki serverga kira olmagan bo'lsa - saytga yuboramiz.
      *  Serverga kirish: engine.log da oxirgi "Connecting to" dan keyin "BT: in game" bo'lmasa - kirolmagan. */
