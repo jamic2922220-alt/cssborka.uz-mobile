@@ -1376,7 +1376,9 @@ public class MainActivity extends Activity {
                                     : r == android.app.ApplicationExitInfo.REASON_ANR ? "mob_anr"
                                     : r == android.app.ApplicationExitInfo.REASON_LOW_MEMORY ? "mob_lowmem" : null;
                             if (k == null) continue;
-                            String x = "r=" + r + (r == android.app.ApplicationExitInfo.REASON_CRASH_NATIVE ? "(native)" : "") + " desc=" + e.getDescription()
+                            // fonda (o'yinchi boshqa ilovaga o'tgan) xotira uchun yopilishi - yiqilish emas, Android o'zi qiladi
+                            if ("mob_lowmem".equals(k) && e.getImportance() > android.app.ActivityManager.RunningAppProcessInfo.IMPORTANCE_VISIBLE) continue;
+                            String x = "imp=" + e.getImportance() + " r=" + r + (r == android.app.ApplicationExitInfo.REASON_CRASH_NATIVE ? "(native)" : "") + " desc=" + e.getDescription()
                                     + " pss=" + (e.getPss() / 1024) + "MB " + phoneInfo() + " log=" + tail;
                             sendProb(k, dev, x);
                         }
