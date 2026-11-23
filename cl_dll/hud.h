@@ -859,6 +859,7 @@ public:
 private:
 	float left, right, centerx, centery;
 	int m_iScopeArc[4];
+	int m_bNoArcs; // X CLIENT: scope_arc*.tga ochilmasa o'yin to'xtamaydi - prizma yoysiz chiziladi
 };
 
 //

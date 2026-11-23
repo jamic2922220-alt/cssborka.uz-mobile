@@ -42,6 +42,7 @@ int CHudSniperScope::Init()
 
 	m_iFlags = HUD_DRAW;
 	m_iScopeArc[0] = m_iScopeArc[1] =m_iScopeArc[2] = m_iScopeArc[3]  = 0;
+	m_bNoArcs = 0;
 	return 1;
 }
 
@@ -59,10 +60,11 @@ int CHudSniperScope::VidInit()
 	m_iScopeArc[2] = gRenderAPI.GL_LoadTexture("sprites/scope_arc.tga",    NULL, 0, TF_NEAREST|TF_NOMIPMAP|TF_CLAMP);
 	m_iScopeArc[3] = gRenderAPI.GL_LoadTexture("sprites/scope_arc_sw.tga", NULL, 0, TF_NEAREST|TF_NOMIPMAP|TF_CLAMP);
 
-	if( !m_iScopeArc[0] || !m_iScopeArc[1] || !m_iScopeArc[2] || !m_iScopeArc[3] )
-	{
-		gRenderAPI.Host_Error( "^3Error^7: Cannot load Sniper Scope arcs. Check sprites/scope_arc*.tga files\n" );
-	}
+	// X CLIENT: oldin Host_Error edi - fayl yo'q/buzuq (eski o'yin arxivi yoki serverdan kelgan noto'g'ri tga) bo'lsa
+	// har xaritada "Cannot load Sniper Scope arcs" bilan o'yin to'xtab, serverga kirib bo'lmasdi. Endi faqat ogohlantirish.
+	m_bNoArcs = ( !m_iScopeArc[0] || !m_iScopeArc[1] || !m_iScopeArc[2] || !m_iScopeArc[3] );
+	if( m_bNoArcs )
+		ConsolePrint( "^3Warning^7: Cannot load Sniper Scope arcs (sprites/scope_arc*.tga) - drawing scope without arcs\n" );
 	
 	left = (TrueWidth - TrueHeight)/2.0;
 	right = left + TrueHeight;
@@ -91,10 +93,13 @@ int CHudSniperScope::Draw(float flTime)
 
 	gRenderAPI.GL_SelectTexture(0);
 
-	DrawTexture( m_iScopeArc[0], left, 0, centerx, centery );
-	DrawTexture( m_iScopeArc[1], centerx, 0, right, centery );
-	DrawTexture( m_iScopeArc[2], centerx, centery, right, TrueHeight );
-	DrawTexture( m_iScopeArc[3], left, centery, centerx, TrueHeight );
+	if( !m_bNoArcs )
+	{
+		DrawTexture( m_iScopeArc[0], left, 0, centerx, centery );
+		DrawTexture( m_iScopeArc[1], centerx, 0, right, centery );
+		DrawTexture( m_iScopeArc[2], centerx, centery, right, TrueHeight );
+		DrawTexture( m_iScopeArc[3], left, centery, centerx, TrueHeight );
+	}
 
 	gRenderAPI.GL_Bind( 0, gHUD.m_WhiteTex );
 	// gEngfuncs.pTriAPI->Begin( TRI_QUADS );
@@ -112,5 +117,5 @@ int CHudSniperScope::Draw(float flTime)
 void CHudSniperScope::Shutdown()
 {
 	for( int i = 0; i < 4; i++ )
-		gRenderAPI.GL_FreeTexture( m_iScopeArc[i] );
+		if( m_iScopeArc[i] ) gRenderAPI.GL_FreeTexture( m_iScopeArc[i] );
 }

@@ -41,6 +41,7 @@ import org.json.JSONObject;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -752,8 +753,54 @@ public class MainActivity extends Activity {
         if (all) prefs().edit().putInt("loc_v", LOC_VER).apply();
     }
 
+    /** Snayper prizmasi rasmlari (sprites/scope_arc*.tga): eski o'yin arxivida yo'q yoki serverdan buzuq tga kelgan bo'lsa
+     *  o'yin har xaritada "Cannot load Sniper Scope arcs" bilan to'xtab, serverga kirib bo'lmasdi. Yo'q/buzuq bo'lsa -
+     *  ilova ichidagisini qo'yamiz, yuklab olinganlar ichidagi buzuqni o'chiramiz. */
+    private static final String[] SCOPE_TGA = {"scope_arc_nw.tga", "scope_arc_ne.tga", "scope_arc.tga", "scope_arc_sw.tga"};
+    private static boolean tgaOk(File f) {
+        if (!f.isFile() || f.length() < 18) return false;
+        try {
+            FileInputStream in = new FileInputStream(f);
+            byte[] h = new byte[18];
+            int n = in.read(h);
+            in.close();
+            if (n < 18) return false;
+            int type = h[2] & 0xff, w = (h[12] & 0xff) | ((h[13] & 0xff) << 8), hh = (h[14] & 0xff) | ((h[15] & 0xff) << 8), bpp = h[16] & 0xff;
+            return (type == 2 || type == 10) && (bpp == 24 || bpp == 32) && w > 0 && hh > 0 && w <= 4096 && hh <= 4096;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+    private void ensureScopeArcs() {
+        StringBuilder fixed = new StringBuilder();
+        for (String nm : SCOPE_TGA) {
+            File dl = new File(baseDir(), "cstrike_downloads/sprites/" + nm);
+            if (dl.exists() && !tgaOk(dl) && dl.delete()) fixed.append(" dl:").append(nm);
+            File dst = new File(baseDir(), "cstrike/sprites/" + nm);
+            if (tgaOk(dst)) continue;
+            try {
+                if (!dst.getParentFile().exists()) dst.getParentFile().mkdirs();
+                InputStream in = getAssets().open("xc_scope/" + nm);
+                FileOutputStream fo = new FileOutputStream(dst);
+                byte[] buf = new byte[16384];
+                int n;
+                while ((n = in.read(buf)) > 0) fo.write(buf, 0, n);
+                fo.close();
+                in.close();
+                fixed.append(' ').append(nm);
+            } catch (Exception e) {
+                fixed.append(" err:").append(nm);
+            }
+        }
+        if (fixed.length() > 0) {
+            final String dev = deviceHash(), x = "fix=" + fixed.toString().trim() + " " + phoneInfo();
+            new Thread(new Runnable() { public void run() { sendProb("mob_scope", dev, x); } }).start();
+        }
+    }
+
     private void writeSettings() {
         installLoc();
+        ensureScopeArcs();
         try {
             SharedPreferences p = prefs();
             syncSensFromGame(p);
