@@ -6,6 +6,9 @@ on:
     branches: [claude/ios]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   ios:
     runs-on: macos-26-intel   # arm Mac navbati to`lib qolyapti - iPhone uchun Intel Mac da ham yig`iladi
@@ -43,6 +46,25 @@ jobs:
           cmake --build gbuild --config Release -j 4
           cmake --install gbuild --config Release
           find build/ios/libs -type f | head -50
+      - name: X CLIENT launcher (nom, bundle id, o'yin fayllarini yuklash, avtomatik boshlash)
+        run: |
+          cp xcgame/ios/XCSetup.inc ios/Launcher/XCSetup.inc
+          python3 - <<'PY'
+          p = 'ios/Launcher/AppDelegate.m'; s = open(p).read()
+          a = 'NSString *libraryDirectory;'
+          assert s.count(a) == 1 and s.count('[LibDownloader fetchManifest];') == 1
+          s = s.replace(a, a + '\n#import "ViewController.h"\n#import "Game.h"\n#include "XCSetup.inc"\n', 1)
+          s = s.replace('[LibDownloader fetchManifest];', 'XC_Start(self);   // X CLIENT: o\'yin fayllari + avtomatik boshlash', 1)
+          open(p, 'w').write(s)
+          p = 'ios/Launcher.xcodeproj/project.pbxproj'; s = open(p).read()
+          for a, b in [('PRODUCT_BUNDLE_IDENTIFIER = su.xash.engine;', 'PRODUCT_BUNDLE_IDENTIFIER = uz.cssborka.xclient;'),
+                       ('INFOPLIST_KEY_CFBundleDisplayName = "Xash3D FWGS";', 'INFOPLIST_KEY_CFBundleDisplayName = "X CLIENT";'),
+                       ('MARKETING_VERSION = 1.0;', 'MARKETING_VERSION = 1.0.${{ github.run_number }};'),
+                       ('CURRENT_PROJECT_VERSION = 1;', 'CURRENT_PROJECT_VERSION = ${{ github.run_number }};')]:
+              assert a in s, a
+              s = s.replace(a, b)
+          open(p, 'w').write(s)
+          PY
       - name: Launcher (imzosiz)
         run: |
           cp -vr /Library/Frameworks/SDL3.xcframework ./
@@ -56,3 +78,10 @@ jobs:
         with:
           name: X-CLIENT-ios-imzosiz
           path: artifacts/
+      - name: Release (imzosiz IPA - serverda imzolanadi)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create ios-build-${{ github.run_number }} artifacts/X-CLIENT-ios-imzosiz.ipa -R ${{ github.repository }} \
+            --target ${{ github.sha }} --prerelease --title "X CLIENT iPhone - build ${{ github.run_number }} (imzosiz)" \
+            --notes "Imzosiz IPA. Serverda tools/ios_sign.sh bilan imzolanadi va mmb/mobile/X-CLIENT.ipa ga qo'yiladi. Versiya: 1.0.${{ github.run_number }}"
