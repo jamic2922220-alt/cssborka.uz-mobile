@@ -108,7 +108,24 @@ async function mountZip(FS, z, root) {
 let SERVER = '', XG = null;
 const MISS = new Set(); let missTm = 0, dlBusy = false, retries = 0;
 function note(t) { const n = $('note'); if (!n) return; n.textContent = t; n.style.display = t ? 'block' : 'none'; }
+/* APK dagidek yuklanish ekrani: ulanishdan xaritaga kirguncha (CL_SignonReply: 2) - konsol xatolari va pushti kataklar ko'rinmaydi */
+let loadOn = false, loadP = 0, loadTm = 0;
+function loading(on, text, p) {
+  const el = $('load'); if (!el) return;
+  if (on) {
+    if (!loadOn) { loadOn = true; loadP = 5; el.style.display = 'block'; clearInterval(loadTm); loadTm = setInterval(() => { if (loadP < 90) { loadP += (90 - loadP) * 0.03; $('lb').style.width = loadP + '%'; } }, 500); }
+    if (text) $('lt').textContent = text;
+    if (p != null) { loadP = Math.max(loadP, p); $('lb').style.width = loadP + '%'; }
+  } else if (loadOn) {
+    loadOn = false; clearInterval(loadTm); $('lb').style.width = '100%';
+    setTimeout(() => { if (!loadOn) el.style.display = 'none'; }, 250);
+  }
+}
 function onLog(t) {
+  if (/Connecting to |Commencing connection retry|reconnecting/.test(t)) loading(true, 'Serverga ulanmoqda...');
+  else if (/Connection accepted|Signon|precach|Loading decals|processing downloaded/i.test(t)) loading(true, "Xarita va fayllar yuklanmoqda...", 30);
+  else if (/CL_SignonReply: 2/.test(t)) loading(false);
+  else if (/Server connection timed out|Disconnected|Connection refused|Server disconnected|kicked|banned|Bad password/i.test(t)) { loading(false); }
   let m = /Connecting to (\d{1,3}(?:\.\d{1,3}){3}:\d+)/.exec(t);
   if (m && m[1] !== SERVER) { SERVER = m[1]; retries = 0; }
   m = /no servers to download (\S+)/.exec(t);
@@ -134,11 +151,10 @@ async function fetchMissing() {
           ok++;
         }
       } catch (e) {}
-      done++; note('Server fayllari yuklanmoqda: ' + done + ' / ' + list.length);
+      done++; loading(true, 'Server fayllari yuklanmoqda: ' + done + ' / ' + list.length, 20 + 60 * done / list.length);
     }
   };
   await Promise.all([one(), one(), one(), one()]);
-  note('');
   dlBusy = false;
   if (ok && retries < 3) { retries++; XG.Cmd_ExecuteString('fs_rescan'); XG.Cmd_ExecuteString('retry'); }
 }
@@ -169,10 +185,10 @@ async function start(connect) {
     const x = new Xash3D({
       canvas: $('canvas'),
       renderer: 'gl4es',
-      arguments: ['-game', 'cstrike', '+touch_enable', '1', '+_vgui_menus', '0'].concat(connect ? ['+connect', connect] : []),
+      arguments: ['-game', 'cstrike', '-dev', '2', '+con_notifytime', '0', '+touch_enable', '1', '+_vgui_menus', '0'].concat(connect ? ['+connect', connect] : []),
       libraries: { client: 'client.wasm', menu: 'libmenu.wasm', server: 'server.wasm' },
       filesMap: { 'xash.wasm': 'xash.wasm', 'filesystem_stdio.wasm': 'filesystem_stdio.wasm', 'libref_webgl2.wasm': 'libref_webgl2.wasm', 'libref_soft.wasm': 'libref_soft.wasm' },
-      module: { print: (t) => { console.log(t); onLog(t); }, printErr: (t) => { console.warn(t); onLog(t); } },
+      module: { print: (t) => onLog(t), printErr: (t) => onLog(t) },   // -dev 2: signon xabarlari kerak; konsolga chiqarilmaydi (tezlik)
     });
     const sender = new WsSender(RELAYS);
     x.net = new XcNet(sender); sender.net = x.net;

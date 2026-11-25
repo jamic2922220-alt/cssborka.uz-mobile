@@ -36,7 +36,7 @@ jobs:
           cp ../web/main.js ./main.js && npx esbuild ./main.js --bundle --format=esm --minify --target=es2020 --outfile=../site/main.js
           cp node_modules/xash3d-fwgs/dist/*.wasm ../site/
           cd ..
-          cp client.wasm server.wasm web/index.html web/manifest.json web/icon.png site/
+          cp client.wasm server.wasm web/index.html web/manifest.json web/icon.png web/loading.jpg site/
           sed -i "s/__BUILD__/${{ github.run_number }}/" site/index.html
       - name: O'yin fayllari (brauzer uchun yengil)
         run: |

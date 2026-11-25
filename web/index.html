@@ -18,6 +18,11 @@ button{font:inherit}#go{display:block;width:100%;background:var(--red);color:#ff
 ol{padding-left:20px;margin:6px 0}li{margin:3px 0}
 </style></head><body>
 <div id="note" style="display:none;position:fixed;left:50%;top:max(8px,env(safe-area-inset-top));transform:translateX(-50%);z-index:5;background:rgba(0,0,0,.75);color:#fff;padding:6px 12px;border-radius:8px;font-size:14px"></div>
+<div id="load" style="display:none;position:fixed;inset:0;z-index:4;background:#0b0a0e url(loading.jpg) 59% 45%/cover no-repeat">
+<div style="position:absolute;left:50%;bottom:max(9%,env(safe-area-inset-bottom));transform:translateX(-50%);width:min(70vw,560px);text-align:center">
+<div id="lt" style="color:#e9e9ef;font-size:15px;margin-bottom:8px;text-shadow:0 1px 3px #000">Serverga ulanmoqda...</div>
+<div style="height:6px;background:rgba(255,255,255,.12);border-radius:3px;overflow:hidden"><div id="lb" style="height:100%;width:8%;background:#e5383b;transition:width .3s"></div></div>
+</div></div>
 <canvas id="canvas" oncontextmenu="event.preventDefault()"></canvas>
 <div id="ui"><div class="w">
 <h1><span>X</span> CLIENT</h1><div class="mut">CS 1.6 - brauzerda, o'rnatmasdan. iPhone, Android, kompyuter.</div>
