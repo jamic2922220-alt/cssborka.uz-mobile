@@ -29,7 +29,7 @@ jobs:
         run: |
           mkdir -p build/ios/libs
           cmake -S xcgame -B gbuild -DCMAKE_SYSTEM_NAME=iOS -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0 -DCMAKE_OSX_ARCHITECTURES=arm64 \
-            -DCMAKE_BUILD_TYPE=Release -DENABLE_YY_THUNKS=OFF -DCMAKE_INSTALL_PREFIX=$(pwd)/build/ios/libs
+            -DCMAKE_BUILD_TYPE=Release -DENABLE_YY_THUNKS=OFF -DMAINUI_USE_STB=ON -DCMAKE_INSTALL_PREFIX=$(pwd)/build/ios/libs
           cmake --build gbuild --config Release -j 4
           cmake --install gbuild --config Release
           find build/ios/libs -type f | head -50
