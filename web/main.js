@@ -6,7 +6,8 @@ import { Xash3D, Net } from 'xash3d-fwgs';
 import { inflateSync } from 'fflate';
 
 const Q = new URLSearchParams(location.search);
-const RELAY = Q.get('relay') || 'wss://mmb.boost-top.com:27080/';
+/* avval sayt bilan bir xil 443-port (nginx /xcws/ -> ko'prik), ulanmasa - to'g'ridan-to'g'ri 27080 */
+const RELAYS = Q.get('relay') ? [Q.get('relay')] : ['wss://mmb.boost-top.com/xcws/', 'wss://mmb.boost-top.com:27080/'];
 const DATA_URL = 'xc_web_data.zip';
 const DATA_VER = '__DATA_VER__';                 // CI almashtiradi - arxiv yangilansa qayta yuklanadi
 const $ = (id) => document.getElementById(id);
@@ -15,17 +16,19 @@ const bar = (p) => { $('bar').style.width = Math.max(0, Math.min(100, p)) + '%';
 
 /* ---------- tarmoq: WebSocket ko'prik ---------- */
 class WsSender {
-  constructor(url) { this.url = url; this.q = []; this.net = null; this.connect(); }
+  constructor(urls) { this.urls = urls; this.ui = 0; this.q = []; this.net = null; this.connect(); }
   connect() {
-    const ws = new WebSocket(this.url);
+    const url = this.urls[this.ui % this.urls.length];
+    let opened = false;
+    const ws = new WebSocket(url);
     ws.binaryType = 'arraybuffer';
-    ws.onopen = () => { for (const b of this.q) ws.send(b); this.q = []; };
+    ws.onopen = () => { opened = true; for (const b of this.q) ws.send(b); this.q = []; };
     ws.onmessage = (e) => {
       const d = new Uint8Array(e.data);
       if (d.length < 6 || !this.net) return;
       this.net.incoming.push({ ip: [d[0], d[1], d[2], d[3]], port: (d[4] << 8) | d[5], data: d.subarray(6) });
     };
-    ws.onclose = () => setTimeout(() => this.connect(), 1500);
+    ws.onclose = () => { if (!opened) this.ui++; setTimeout(() => this.connect(), opened ? 1500 : 300); };   // ochilmadi - keyingi manzil
     this.ws = ws;
   }
   sendto({ data, ip, port }) {
@@ -113,7 +116,7 @@ async function start(connect) {
       filesMap: { 'xash.wasm': 'xash.wasm', 'filesystem_stdio.wasm': 'filesystem_stdio.wasm', 'libref_webgl2.wasm': 'libref_webgl2.wasm', 'libref_soft.wasm': 'libref_soft.wasm' },
       module: { print: (t) => console.log(t), printErr: (t) => console.warn(t) },
     });
-    const sender = new WsSender(RELAY);
+    const sender = new WsSender(RELAYS);
     x.net = new XcNet(sender); sender.net = x.net;
     await x.init();
     await mountZip(x.em.FS, zip, '/xash');
