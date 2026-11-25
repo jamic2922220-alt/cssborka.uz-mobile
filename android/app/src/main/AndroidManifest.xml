@@ -10,6 +10,11 @@
     <uses-feature android:name="android.hardware.microphone" android:required="false" />
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- yuklash ekran o'chsa ham davom etsin (bildirishnomada foiz) -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.VIBRATE" />
     <!-- ilova ichida yangilanishni o'rnatish uchun -->
@@ -61,13 +66,20 @@
             android:name=".UpdCheckReceiver"
             android:exported="false" />
 
+        <service
+            android:name=".KeepAliveService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+
         <activity
             android:name=".CZeroActivity"
             android:exported="false" />
 
-        <!-- O'yin dvijogi (Xash3D FWGS) -->
+        <!-- O'yin dvijogi (Xash3D FWGS) - alohida jarayonda: serverga kirishda eski o'yin yopilib, yangidan ochiladi
+             (aks holda orqada ochiq qolgan o'yin oldinga chiqib, "+connect" bajarilmay asosiy menyu ko'rinardi) -->
         <activity
             android:name="su.xash.engine.XashActivity"
+            android:process=":game"
             android:alwaysRetainTaskState="true"
             android:configChanges="orientation|uiMode|screenLayout|screenSize|smallestScreenSize|keyboard|keyboardHidden|navigation|touchscreen"
             android:exported="false"

@@ -584,6 +584,32 @@ public class MainActivity extends Activity {
             sendStat("connect", ip);
         }
         startPresence(ip);
+        // orqada ochiq qolgan o'yin bo'lsa - yopamiz, aks holda Android o'shani oldinga chiqaradi va "+connect" bajarilmaydi
+        if (ip != null && killGame()) {
+            final String fargv = argv;
+            new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(new Runnable() {
+                @Override
+                public void run() { startGame(fargv); }
+            }, 400);
+            return;
+        }
+        startGame(argv);
+    }
+
+    /** ":game" jarayonidagi (XashActivity) o'yinni yopadi. Yopilgan bo'lsa true. */
+    private boolean killGame() {
+        boolean killed = false;
+        try {
+            android.app.ActivityManager am = (android.app.ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
+            java.util.List<android.app.ActivityManager.RunningAppProcessInfo> l = am.getRunningAppProcesses();
+            if (l != null) for (android.app.ActivityManager.RunningAppProcessInfo p : l)
+                if ((getPackageName() + ":game").equals(p.processName)) { android.os.Process.killProcess(p.pid); killed = true; }
+        } catch (Exception ignored) {
+        }
+        return killed;
+    }
+
+    private void startGame(String argv) {
         try {
             startActivity(new Intent().setComponent(new ComponentName(getPackageName(), "su.xash.engine.XashActivity"))
                     .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK)
@@ -1251,6 +1277,7 @@ public class MainActivity extends Activity {
         downloading = true;
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         render();
+        KeepAliveService.start(this, "X CLIENT - " + t("dling"));
         new Thread(new Runnable() {
             @Override
             public void run() {
@@ -1290,6 +1317,8 @@ public class MainActivity extends Activity {
                             if (now - lastUi > 300) {
                                 lastUi = now;
                                 final long done = in.count;
+                                KeepAliveService.progress(MainActivity.this, "X CLIENT", (int) Math.min(100, done * 100 / Math.max(1, total)),
+                                        t("dling") + (done >> 20) + " / " + (total >> 20) + " MB");
                                 runOnUiThread(new Runnable() {
                                     @Override
                                     public void run() {
@@ -1313,6 +1342,7 @@ public class MainActivity extends Activity {
                     public void run() {
                         downloading = false;
                         getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+                        KeepAliveService.stop(MainActivity.this);
                         toastLike(err == null ? t("dlok") : t("dlerr") + err);
                         render();
                     }
@@ -2169,17 +2199,15 @@ public class MainActivity extends Activity {
         if (!map.matches("[A-Za-z0-9_.-]{1,40}")) map = "de_dust2";
         String argv = "-log -dll @yapb +exec boosttop_settings.cfg" + touchPresetArg() + " +sv_lan 1 +maxplayers " + Math.min(32, mx)
                 + " +yb_quota " + n + " +yb_difficulty " + p.getInt("bot_d", 1) + " +map " + map;
-        try {
-            startActivity(new Intent().setComponent(new ComponentName(getPackageName(), "su.xash.engine.XashActivity"))
-                    .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK)
-                    .putExtra("gamedir", "cstrike")
-                    .putExtra("gamelibdir", getApplicationInfo().nativeLibraryDir)
-                    .putExtra("basedir", baseDir().getAbsolutePath())
-                    .putExtra("argv", argv)
-                    .putExtra("package", getPackageName()));
-        } catch (Exception e) {
-            toastLike(String.valueOf(e.getMessage()));
+        if (killGame()) {           // orqadagi o'yin yopilmasa "+map" bajarilmaydi
+            final String fargv = argv;
+            new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(new Runnable() {
+                @Override
+                public void run() { startGame(fargv); }
+            }, 400);
+            return;
         }
+        startGame(argv);
     }
 
     private View accountCard() {
@@ -3857,6 +3885,7 @@ public class MainActivity extends Activity {
         }
         updating = true;
         render();
+        KeepAliveService.start(this, "X CLIENT - " + t("dling"));
         final String url = updUsedMirror && apkMirror.length() > 0 ? apkMirror : apkUrl;
         new Thread(new Runnable() {
             @Override
@@ -3898,6 +3927,7 @@ public class MainActivity extends Activity {
                         if (now - lastUi > 300) {
                             lastUi = now;
                             final int pct = (int) Math.min(100, done * 100 / total);
+                            KeepAliveService.progress(MainActivity.this, "X CLIENT", pct, t("dling") + pct + "%");
                             runOnUiThread(new Runnable() {
                                 @Override
                                 public void run() {
@@ -3913,6 +3943,7 @@ public class MainActivity extends Activity {
                         @Override
                         public void run() {
                             updating = false;
+                            KeepAliveService.stop(MainActivity.this);
                             render();
                             openInstaller(apk);
                         }
@@ -3928,6 +3959,7 @@ public class MainActivity extends Activity {
                     public void run() {
                         if (fe != null) {
                             updating = false;
+                            KeepAliveService.stop(MainActivity.this);
                             render();
                             showUpdateError(fe);
                         }
