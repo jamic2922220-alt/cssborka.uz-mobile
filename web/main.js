@@ -102,6 +102,64 @@ async function mountZip(FS, z, root) {
   }
 }
 
+/* ---------- server qo'shimcha fayllari (fastdl) ----------
+ * Brauzerdagi dvijok HTTP orqali yuklay olmaydi ("no servers to download ..."). Bunday fayllarni sahifa o'zi
+ * ko'prik orqali (/xcws/dl) yuklaydi, FS ga yozadi, keshlaydi va serverga qayta ulanadi (retry). */
+let SERVER = '', XG = null;
+const MISS = new Set(); let missTm = 0, dlBusy = false, retries = 0;
+function note(t) { const n = $('note'); if (!n) return; n.textContent = t; n.style.display = t ? 'block' : 'none'; }
+function onLog(t) {
+  let m = /Connecting to (\d{1,3}(?:\.\d{1,3}){3}:\d+)/.exec(t);
+  if (m && m[1] !== SERVER) { SERVER = m[1]; retries = 0; }
+  m = /no servers to download (\S+)/.exec(t);
+  if (m && SERVER) { MISS.add(m[1].replace(/\.$/, '')); clearTimeout(missTm); missTm = setTimeout(fetchMissing, 1500); }
+}
+async function fetchMissing() {
+  if (dlBusy || !MISS.size || !XG) return;
+  dlBusy = true;
+  const list = [...MISS]; MISS.clear();
+  let cache = null; try { cache = await caches.open('xc-dl'); } catch (e) {}
+  let done = 0, ok = 0;
+  const work = list.slice();
+  const one = async () => {
+    for (let f; (f = work.shift());) {
+      try {
+        const r = await fetch('/xcws/dl?s=' + encodeURIComponent(SERVER) + '&f=' + encodeURIComponent(f));
+        if (r.ok) {
+          const b = new Uint8Array(await r.arrayBuffer());
+          const path = '/xash/cstrike_downloads/' + f;
+          XG.em.FS.mkdirTree(path.slice(0, path.lastIndexOf('/')));
+          XG.em.FS.writeFile(path, b);
+          if (cache) cache.put('/dl/' + f, new Response(b)).catch(() => {});
+          ok++;
+        }
+      } catch (e) {}
+      done++; note('Server fayllari yuklanmoqda: ' + done + ' / ' + list.length);
+    }
+  };
+  await Promise.all([one(), one(), one(), one()]);
+  note('');
+  dlBusy = false;
+  if (ok && retries < 3) { retries++; XG.Cmd_ExecuteString('fs_rescan'); XG.Cmd_ExecuteString('retry'); }
+}
+/* oldin yuklangan server fayllari - keyingi safar darhol */
+async function loadDownloads(FS) {
+  try {
+    const cache = await caches.open('xc-dl');
+    for (const req of await cache.keys()) {
+      const f = decodeURIComponent(new URL(req.url).pathname.replace(/^\/dl\//, ''));
+      if (!f || f.includes('..')) continue;
+      const b = new Uint8Array(await (await cache.match(req)).arrayBuffer());
+      const path = '/xash/cstrike_downloads/' + f;
+      FS.mkdirTree(path.slice(0, path.lastIndexOf('/')));
+      FS.writeFile(path, b);
+    }
+  } catch (e) {}
+}
+/* dvijokning "server kutubxonasi topilmadi" ogohlantirishi - onlayn o'yinga kerak emas */
+const _alert = window.alert.bind(window);
+window.alert = (m) => { if (/dlls\/|emscripten_wasm32|Xash Warning/.test(String(m))) { console.warn(m); return; } _alert(m); };
+
 /* ---------- ishga tushirish ---------- */
 async function start(connect) {
   $('go').disabled = true;
@@ -114,12 +172,14 @@ async function start(connect) {
       arguments: ['-game', 'cstrike', '+touch_enable', '1', '+_vgui_menus', '0'].concat(connect ? ['+connect', connect] : []),
       libraries: { client: 'client.wasm', menu: 'libmenu.wasm', server: 'server.wasm' },
       filesMap: { 'xash.wasm': 'xash.wasm', 'filesystem_stdio.wasm': 'filesystem_stdio.wasm', 'libref_webgl2.wasm': 'libref_webgl2.wasm', 'libref_soft.wasm': 'libref_soft.wasm' },
-      module: { print: (t) => console.log(t), printErr: (t) => console.warn(t) },
+      module: { print: (t) => { console.log(t); onLog(t); }, printErr: (t) => { console.warn(t); onLog(t); } },
     });
     const sender = new WsSender(RELAYS);
     x.net = new XcNet(sender); sender.net = x.net;
     await x.init();
     await mountZip(x.em.FS, zip, '/xash');
+    await loadDownloads(x.em.FS);
+    XG = x;
     x.em.FS.chdir('/xash');
     $('ui').style.display = 'none'; $('canvas').style.display = 'block';
     window.XC = x;
