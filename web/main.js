@@ -119,8 +119,8 @@ async function start(connect) {
     await mountZip(x.em.FS, zip, '/xash');
     x.em.FS.chdir('/xash');
     $('ui').style.display = 'none'; $('canvas').style.display = 'block';
-    x.main();
     window.XC = x;
+    try { x.main(); } catch (e) { if (e !== Infinity && e !== 'unwind') throw e; }   // Emscripten asosiy tsikli shunday "chiqadi" - bu xato emas
   } catch (e) {
     say('Xato: ' + (e && e.message || e) + '. Sahifani yangilab qayta urinib ko\'ring.');
     $('go').disabled = false;
