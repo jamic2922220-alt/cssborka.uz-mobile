@@ -25,6 +25,16 @@ jobs:
           # rasmiy skript hlsdk ni ham oladi - bizga kerak emas, uni olib tashlaymiz
           sed -i '' '/hlsdk-portable/d' scripts/gha/deps_ios.sh
           bash scripts/gha/deps_ios.sh
+          # Intel Mac da yig'ilganda opus x86 (SSE) kodini tanlab qo'yadi - iPhone uchun faqat umumiy kod
+          sed -i '' "s/DEST_CPU.startswith('x86')/DEST_CPU.startswith('x86') and not conf.env.IOS/; s/bld.env.DEST_CPU.startswith('x86') and not conf.env.IOS/bld.env.DEST_CPU.startswith('x86') and not bld.env.IOS/" 3rdparty/opus/wscript
+          grep -n "startswith('x86')" 3rdparty/opus/wscript
+          python3 - <<'PY'
+          p = 'wscript'; s = open(p).read()
+          a = "\tif conf.env.DEST_CPU == 'amd64':"
+          assert a in s
+          s = s.replace(a, "\tif conf.env.IOS and not conf.options.IOSSIM:\n\t\tconf.env.DEST_CPU = 'aarch64'\n" + a, 1)
+          open(p, 'w').write(s)
+          PY
       - name: O'yin kutubxonalari (client, menyu, server) - iOS
         run: |
           mkdir -p build/ios/libs
