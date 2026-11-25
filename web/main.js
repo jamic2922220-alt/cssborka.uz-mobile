@@ -114,7 +114,7 @@ let loadOn = false, loadP = 0, loadTm = 0;
 function loading(on, text, p) {
   const el = $('load'); if (!el) return;
   if (on) {
-    if (!loadOn) { loadOn = true; loadP = 5; el.style.display = 'block'; clearInterval(loadTm); loadTm = setInterval(() => { if (loadP < 90) { loadP += (90 - loadP) * 0.03; $('lb').style.width = loadP + '%'; } }, 500); }
+    if (!loadOn) { loadOn = true; loadP = 5; loadSince = Date.now(); el.style.display = 'block'; clearInterval(loadTm); loadTm = setInterval(() => { if (loadP < 90) { loadP += (90 - loadP) * 0.03; $('lb').style.width = loadP + '%'; } }, 500); }
     if (text) $('lt').textContent = text;
     if (p != null) { loadP = Math.max(loadP, p); $('lb').style.width = loadP + '%'; }
   } else if (loadOn) {
@@ -122,8 +122,20 @@ function loading(on, text, p) {
     setTimeout(() => { if (!loadOn) el.style.display = 'none'; }, 250);
   }
 }
+/* diagnostika: muhim jurnal qatorlari; qotib qolsa ko'prikka (/xcws/dbg) yuboriladi - muammoni tez topish uchun */
+const LOGS = []; let dbgSent = 0, loadSince = 0, lastDl = '';
+const NOISE = /NET_QueuePacket|GL_GetProcAddress|GL2_|Adding WAD|FS_LoadImage|Shader|#if|#endif|#define|Unknown command|Rendering Bitmap|Unable to read font|Range |List \[/;
+function sendDbg(why) {
+  if (Date.now() - dbgSent < 60000) return;
+  dbgSent = Date.now();
+  const head = 'sabab=' + why + ' server=' + SERVER + ' retries=' + retries + ' dl=' + lastDl + ' ua=' + navigator.userAgent + '\n';
+  fetch('/xcws/dbg', { method: 'POST', body: head + LOGS.slice(-160).join('\n') }).catch(() => {});
+}
+setInterval(() => { if (loadOn && loadSince && Date.now() - loadSince > 45000) sendDbg('45s'); }, 5000);
 let lastShown = 0;
 function onLog(t) {
+  if (!NOISE.test(t)) { LOGS.push(String(t).replace(/\^\d/g, '').slice(0, 220)); if (LOGS.length > 400) LOGS.splice(0, 100); }
+  if (/couldn't connect|Server connection timed out|Connection refused|Server disconnected|kicked|banned/i.test(t)) setTimeout(() => sendDbg('xato'), 500);
   if (t.indexOf('NET_QueuePacket') >= 0) return;   // har kadrda takrorlanadigan zararsiz xabar
   if (loadOn) { const now = Date.now(); if (now - lastShown > 250) { lastShown = now; const c = String(t).replace(/\^\d/g, '').trim(); if (c) $('ll').textContent = c.slice(0, 120); } }
   if (/processing downloaded/.test(t)) loading(true, 'Server fayllari olinmoqda...', 40);
@@ -160,6 +172,7 @@ async function fetchMissing() {
     }
   };
   await Promise.all([one(), one(), one(), one()]);
+  lastDl = ok + '/' + list.length;
   dlBusy = false;
   /* "retry" yuklash navbati osilib qolsa ishlamaydi - to'liq uzilib, qaytadan ulanamiz.
    * 3-urinishda ham fayl yetmasa (serverda yo'q) - yuklashsiz kiramiz (bitta fayl o'rnida pushti katak, lekin o'yin qotmaydi) */
@@ -252,5 +265,5 @@ fetch('https://mmb.boost-top.com/servers.php').then((r) => r.json()).then((l) =>
   }
 }).catch(() => {});
 $('go').onclick = () => start('212.47.58.89:27015');
-$('lx').onclick = () => { if (XG) XG.Cmd_ExecuteString('disconnect'); loading(false); };
+$('lx').onclick = () => { sendDbg('bekor'); if (XG) XG.Cmd_ExecuteString('disconnect'); loading(false); };
 if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
