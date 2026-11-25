@@ -124,6 +124,7 @@ function loading(on, text, p) {
 }
 let lastShown = 0;
 function onLog(t) {
+  if (t.indexOf('NET_QueuePacket') >= 0) return;   // har kadrda takrorlanadigan zararsiz xabar
   if (loadOn) { const now = Date.now(); if (now - lastShown > 250) { lastShown = now; const c = String(t).replace(/\^\d/g, '').trim(); if (c) $('ll').textContent = c.slice(0, 120); } }
   if (/processing downloaded/.test(t)) loading(true, 'Server fayllari olinmoqda...', 40);
   if (/Connecting to |Commencing connection retry|reconnecting/.test(t)) loading(true, 'Serverga ulanmoqda...');
@@ -148,7 +149,7 @@ async function fetchMissing() {
         const r = await fetch('/xcws/dl?s=' + encodeURIComponent(SERVER) + '&f=' + encodeURIComponent(f));
         if (r.ok) {
           const b = new Uint8Array(await r.arrayBuffer());
-          const path = '/xash/cstrike_downloads/' + f;
+          const path = '/xash/cstrike/downloaded/' + f;
           XG.em.FS.mkdirTree(path.slice(0, path.lastIndexOf('/')));
           XG.em.FS.writeFile(path, b);
           if (cache) cache.put('/dl/' + f, new Response(b)).catch(() => {});
@@ -176,7 +177,7 @@ async function saveDownloads() {
   if (!XG) return;
   let cache; try { cache = await caches.open('xc-dl'); } catch (e) { return; }
   const have = new Set((await cache.keys()).map((r) => decodeURIComponent(new URL(r.url).pathname)));
-  const FS = XG.em.FS, root = '/xash/cstrike_downloads';
+  const FS = XG.em.FS, root = '/xash/cstrike/downloaded';
   const walk = (dir, rel) => {
     let l = []; try { l = FS.readdir(dir); } catch (e) { return; }
     for (const n of l) {
@@ -197,7 +198,7 @@ async function loadDownloads(FS) {
       const f = decodeURIComponent(new URL(req.url).pathname.replace(/^\/dl\//, ''));
       if (!f || f.includes('..')) continue;
       const b = new Uint8Array(await (await cache.match(req)).arrayBuffer());
-      const path = '/xash/cstrike_downloads/' + f;
+      const path = '/xash/cstrike/downloaded/' + f;
       FS.mkdirTree(path.slice(0, path.lastIndexOf('/')));
       FS.writeFile(path, b);
     }
