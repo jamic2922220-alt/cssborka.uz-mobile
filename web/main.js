@@ -105,7 +105,8 @@ async function mountZip(FS, z, root) {
 /* ---------- server qo'shimcha fayllari (fastdl) ----------
  * Brauzerdagi dvijok HTTP orqali yuklay olmaydi ("no servers to download ..."). Bunday fayllarni sahifa o'zi
  * ko'prik orqali (/xcws/dl) yuklaydi, FS ga yozadi, keshlaydi va serverga qayta ulanadi (retry). */
-let SERVER = '', XG = null;
+let SERVER = '', XG = null, reconnT = 0;
+const reconnecting = () => Date.now() - reconnT < 5000;
 const MISS = new Set(); let missTm = 0, dlBusy = false, retries = 0;
 function note(t) { const n = $('note'); if (!n) return; n.textContent = t; n.style.display = t ? 'block' : 'none'; }
 /* APK dagidek yuklanish ekrani: ulanishdan xaritaga kirguncha (CL_SignonReply: 2) - konsol xatolari va pushti kataklar ko'rinmaydi */
@@ -127,8 +128,8 @@ function onLog(t) {
   if (/processing downloaded/.test(t)) loading(true, 'Server fayllari olinmoqda...', 40);
   if (/Connecting to |Commencing connection retry|reconnecting/.test(t)) loading(true, 'Serverga ulanmoqda...');
   else if (/Connection accepted|Signon|precach|Loading decals|processing downloaded/i.test(t)) loading(true, "Xarita va fayllar yuklanmoqda...", 30);
-  else if (/CL_SignonReply: 2/.test(t)) { loading(false); setTimeout(saveDownloads, 3000); }
-  else if (/Server connection timed out|Disconnected|Connection refused|Server disconnected|kicked|banned|Bad password/i.test(t)) { loading(false); }
+  else if (/CL_SignonReply: 2/.test(t)) { loading(false); retries = 0; if (XG) XG.Cmd_ExecuteString('cl_allowdownload 1'); setTimeout(saveDownloads, 3000); }
+  else if (!dlBusy && !reconnecting() && /Server connection timed out|Connection refused|Server disconnected|kicked|banned|Bad password/i.test(t)) { loading(false); }
   let m = /Connecting to (\d{1,3}(?:\.\d{1,3}){3}:\d+)/.exec(t);
   if (m && m[1] !== SERVER) { SERVER = m[1]; retries = 0; }
   m = /no servers to download (\S+)/.exec(t);
@@ -159,7 +160,16 @@ async function fetchMissing() {
   };
   await Promise.all([one(), one(), one(), one()]);
   dlBusy = false;
-  if (ok && retries < 3) { retries++; XG.Cmd_ExecuteString('fs_rescan'); XG.Cmd_ExecuteString('retry'); }
+  /* "retry" yuklash navbati osilib qolsa ishlamaydi - to'liq uzilib, qaytadan ulanamiz.
+   * 3-urinishda ham fayl yetmasa (serverda yo'q) - yuklashsiz kiramiz (bitta fayl o'rnida pushti katak, lekin o'yin qotmaydi) */
+  loading(true, 'Yuklandi: ' + ok + ' / ' + list.length + '. Serverga qayta ulanmoqda...', 85);
+  retries++;
+  reconnT = Date.now();
+  XG.Cmd_ExecuteString('disconnect');
+  XG.Cmd_ExecuteString('fs_rescan');
+  if (retries >= 3) XG.Cmd_ExecuteString('cl_allowdownload 0');
+  const srv = SERVER;
+  setTimeout(() => { if (XG) XG.Cmd_ExecuteString('connect ' + srv); }, 700);
 }
 /* o'yin o'zi (UDP orqali) yuklab olgan server fayllarini ham saqlaymiz - keyingi kirishda qayta yuklanmaydi */
 async function saveDownloads() {
