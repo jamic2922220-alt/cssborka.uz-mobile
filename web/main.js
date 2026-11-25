@@ -121,10 +121,13 @@ function loading(on, text, p) {
     setTimeout(() => { if (!loadOn) el.style.display = 'none'; }, 250);
   }
 }
+let lastShown = 0;
 function onLog(t) {
+  if (loadOn) { const now = Date.now(); if (now - lastShown > 250) { lastShown = now; const c = String(t).replace(/\^\d/g, '').trim(); if (c) $('ll').textContent = c.slice(0, 120); } }
+  if (/processing downloaded/.test(t)) loading(true, 'Server fayllari olinmoqda...', 40);
   if (/Connecting to |Commencing connection retry|reconnecting/.test(t)) loading(true, 'Serverga ulanmoqda...');
   else if (/Connection accepted|Signon|precach|Loading decals|processing downloaded/i.test(t)) loading(true, "Xarita va fayllar yuklanmoqda...", 30);
-  else if (/CL_SignonReply: 2/.test(t)) loading(false);
+  else if (/CL_SignonReply: 2/.test(t)) { loading(false); setTimeout(saveDownloads, 3000); }
   else if (/Server connection timed out|Disconnected|Connection refused|Server disconnected|kicked|banned|Bad password/i.test(t)) { loading(false); }
   let m = /Connecting to (\d{1,3}(?:\.\d{1,3}){3}:\d+)/.exec(t);
   if (m && m[1] !== SERVER) { SERVER = m[1]; retries = 0; }
@@ -157,6 +160,24 @@ async function fetchMissing() {
   await Promise.all([one(), one(), one(), one()]);
   dlBusy = false;
   if (ok && retries < 3) { retries++; XG.Cmd_ExecuteString('fs_rescan'); XG.Cmd_ExecuteString('retry'); }
+}
+/* o'yin o'zi (UDP orqali) yuklab olgan server fayllarini ham saqlaymiz - keyingi kirishda qayta yuklanmaydi */
+async function saveDownloads() {
+  if (!XG) return;
+  let cache; try { cache = await caches.open('xc-dl'); } catch (e) { return; }
+  const have = new Set((await cache.keys()).map((r) => decodeURIComponent(new URL(r.url).pathname)));
+  const FS = XG.em.FS, root = '/xash/cstrike_downloads';
+  const walk = (dir, rel) => {
+    let l = []; try { l = FS.readdir(dir); } catch (e) { return; }
+    for (const n of l) {
+      if (n === '.' || n === '..') continue;
+      const p = dir + '/' + n, r = rel ? rel + '/' + n : n;
+      let st; try { st = FS.stat(p); } catch (e) { continue; }
+      if (FS.isDir(st.mode)) walk(p, r);
+      else if (!have.has('/dl/' + r) && !/\.incomplete$/.test(n)) { try { cache.put('/dl/' + r, new Response(FS.readFile(p))).catch(() => {}); } catch (e) {} }
+    }
+  };
+  walk(root, '');
 }
 /* oldin yuklangan server fayllari - keyingi safar darhol */
 async function loadDownloads(FS) {
@@ -220,4 +241,5 @@ fetch('https://mmb.boost-top.com/servers.php').then((r) => r.json()).then((l) =>
   }
 }).catch(() => {});
 $('go').onclick = () => start('212.47.58.89:27015');
+$('lx').onclick = () => { if (XG) XG.Cmd_ExecuteString('disconnect'); loading(false); };
 if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
