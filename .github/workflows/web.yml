@@ -1,0 +1,25 @@
+name: X CLIENT Web (brauzerda o'ynash - iPhone Safari)
+# 1-bosqich: bizning CS client / menyu / server kutubxonalari WebAssembly (Emscripten 4.0.9 - dvijok xash3d-fwgs@1.2.2 bilan bir xil) ga yig'iladimi
+on:
+  push:
+    branches: [claude/web]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          submodules: recursive
+      - name: O'yin kutubxonalari (WebAssembly)
+        run: |
+          docker run --rm -v "$PWD":/src -w /src emscripten/emsdk:4.0.9 bash -c '
+            set -e
+            emcmake cmake -S . -B wbuild -DCMAKE_BUILD_TYPE=Release -DENABLE_YY_THUNKS=OFF -DMAINUI_USE_STB=ON
+            cmake --build wbuild -j4
+          '
+          find wbuild -name "*.wasm" -o -name "*.so" | grep -v CMakeFiles
