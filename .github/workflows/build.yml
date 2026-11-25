@@ -427,6 +427,17 @@ jobs:
           	Touch_UpdateViewport();'''),
           ])
           PY
+      - name: Patch nom (Xash3D FWGS -> X CLIENT)
+        run: |
+          python3 - <<'PY'
+          p = 'engine/common/com_strings.h'
+          s = open(p, encoding='utf-8').read()
+          a = '#define XASH_ENGINE_NAME "Xash3D FWGS"'
+          assert a in s, a
+          s = s.replace(a, '#define XASH_ENGINE_NAME "X CLIENT"')
+          open(p, 'w', encoding='utf-8').write(s)
+          print('engine name -> X CLIENT')
+          PY
       - name: Build engine
         run: bash scripts/gha/build_android.sh
       - name: Collect engine parts

@@ -567,6 +567,21 @@ public class MainActivity extends Activity {
         }
     }
 
+    /** Wi-Fi (yoki kabel) orqalimi - tarmoq sozlamasini tanlash uchun. Bilib bo'lmasa - mobil (yengil) deb olamiz */
+    private boolean wifiNet() {
+        try {
+            android.net.ConnectivityManager cm = (android.net.ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+            if (Build.VERSION.SDK_INT >= 23) {
+                android.net.NetworkCapabilities nc = cm.getNetworkCapabilities(cm.getActiveNetwork());
+                return nc != null && (nc.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI) || nc.hasTransport(android.net.NetworkCapabilities.TRANSPORT_ETHERNET));
+            }
+            android.net.NetworkInfo ni = cm.getActiveNetworkInfo();
+            return ni != null && ni.getType() == android.net.ConnectivityManager.TYPE_WIFI;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
     private void launchGame(String ip) {
         if (!hasData()) {
             toastLike(t("needsetup"));
@@ -869,6 +884,7 @@ public class MainActivity extends Activity {
                     {"cl_minmodels", "low".equals(p.getString("gfx", "high")) ? "1" : "0"},
                     {"r_decals", "low".equals(p.getString("gfx", "high")) ? "20" : "100"},
                     {"developer", "0"},
+                    {"scr_drawversion", "1"},   // menyu burchagida "X CLIENT v49/..." (dvijok nomi X CLIENT ga almashtirilgan)
                     // ovozli chat: doim yoqilgan (tugmani bosib turib gapiriladi)
                     {"voice_enable", "1"},
                     {"voice_modenable", "1"},
@@ -879,11 +895,12 @@ public class MainActivity extends Activity {
                     {"bt_touch_layout", "5"},
                     // HUD (TAB jadvali, pul, HP) kompyuterdagi 1024 kenglikdagidek o'lchamda - telefonda mayda bo'lmasin
                     {"hud_scale", "1024"},
-                    // tarmoq: o'qlar aniq hisoblanishi uchun (server o'z chegarasigacha cheklaydi)
-                    {"rate", "100000"},
-                    {"cl_updaterate", "101"},
-                    {"cl_cmdrate", "101"},
-                    {"ex_interp", "0.02"},
+                    // tarmoq internet turiga qarab: telefon 101 paket/s yuborsa mobil internetda paketlar navbatda turib qoladi
+                    // va ping keskin oshadi. Wi-Fi - o'rtacha, mobil internet (3G/4G) - yengil
+                    {"rate", wifiNet() ? "50000" : "25000"},
+                    {"cl_updaterate", wifiNet() ? "80" : "50"},
+                    {"cl_cmdrate", wifiNet() ? "80" : "50"},
+                    {"ex_interp", wifiNet() ? "0.025" : "0.04"},
                     {"cl_lw", "1"},
                     {"cl_lc", "1"},
             };
@@ -893,6 +910,11 @@ public class MainActivity extends Activity {
             for (String[] v : cv) sb.append(v[0]).append(" \"").append(v[1]).append("\"\n");
             if (p.contains("gyro")) sb.append("gyro_enable \"").append(p.getBoolean("gyro", false) ? "1" : "0").append("\"\n");
             String nick = p.getString("nick", "").replace("\"", "").replace(";", "").trim();
+            // kompyuterdagi X CLIENT kabi: nik oldida "X | " belgisi (serverda X CLIENT o'yinchisi ekani ko'rinsin)
+            if (nick.length() == 0) nick = playerName().replace("\"", "").replace(";", "").trim();   // o'yin ichida o'zgartirilgan nik
+            if (nick.equalsIgnoreCase("Player")) nick = "";
+            if (nick.length() > 0 && !nick.startsWith("X | ")) nick = "X | " + nick;
+            if (nick.length() > 31) nick = nick.substring(0, 31);
             if (nick.length() > 0) sb.append("name \"").append(nick).append("\"\n");
             // serverdagi bt_mobile plagini telefon o'yinchisini shu belgi orqali taniydi
             sb.append("setinfo _bt \"m\"\n");
