@@ -8,7 +8,7 @@ on:
 
 jobs:
   ios:
-    runs-on: macos-latest
+    runs-on: macos-26-intel   # arm Mac navbati to`lib qolyapti - iPhone uchun Intel Mac da ham yig`iladi
     steps:
       - name: Checkout Xash3D FWGS
         uses: actions/checkout@v5
