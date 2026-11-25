@@ -1484,6 +1484,15 @@ void CHudAmmo::DrawCrosshairSection( int _x0, int _y0, int _x1, int _y1 )
 		color[2] = bound( 0, color[2], 255 );
 		color[3] = bound( 0, color[3], 255 );
 	}
+	if ( !g_iXash )
+	{
+		// X CLIENT: GoldSrc (kompyuter) - dvijokning o'z to'rtburchak chizishi (gRenderAPI faqat Xash3D da bor)
+		if ( xhair_additive->value )
+			FillRGBA( _x0, _y0, _x1 - _x0, _y1 - _y0, color[0], color[1], color[2], color[3] );
+		else
+			FillRGBABlend( _x0, _y0, _x1 - _x0, _y1 - _y0, color[0], color[1], color[2], color[3] );
+		return;
+	}
 	gEngfuncs.pTriAPI->Color4f( color[0] / 255.0f, color[1] / 255.0f, color[2] / 255.0f, color[3] / 255.0f );
 	// gEngfuncs.pTriAPI->Brightness( 1.0f );
 
@@ -1511,6 +1520,16 @@ void CHudAmmo::DrawCrosshairPadding( int _pad, int _x0, int _y0, int _x1, int _y
 	if ( sscanf( xhair_color->string, "%*d %*d %*d %d", &alpha ) == 1 )
 	{
 		alpha = bound( 0, alpha, 255 );
+	}
+	if ( !g_iXash )
+	{
+		// X CLIENT: GoldSrc - kontur (padding) dvijokning to'rtburchaklari bilan
+		int p = _pad;
+		FillRGBABlend( _x0 - p, _y0 - p, ( _x1 - _x0 ) + 2 * p, p, 0, 0, 0, alpha );
+		FillRGBABlend( _x0 - p, _y1, ( _x1 - _x0 ) + 2 * p, p, 0, 0, 0, alpha );
+		FillRGBABlend( _x0 - p, _y0, p, _y1 - _y0, 0, 0, 0, alpha );
+		FillRGBABlend( _x1, _y0, p, _y1 - _y0, 0, 0, 0, alpha );
+		return;
 	}
 	gEngfuncs.pTriAPI->Color4f( 0, 0, 0, alpha / 255.0f );
 	// gEngfuncs.pTriAPI->Brightness( 1.0f );
@@ -1553,16 +1572,19 @@ void CHudAmmo::DrawCrosshair( int weaponId )
 	y1 = ( y0 + thickness );
 	x1 = ( x0 + thickness );
 
-	gEngfuncs.pTriAPI->Brightness( 1.0f );
-	gEngfuncs.pTriAPI->CullFace( TRI_NONE );
+	if ( g_iXash )
+	{
+		gEngfuncs.pTriAPI->Brightness( 1.0f );
+		gEngfuncs.pTriAPI->CullFace( TRI_NONE );
 
-	gRenderAPI.GL_SelectTexture( 0 );
-	gRenderAPI.GL_Bind( 0, gHUD.m_WhiteTex );
+		gRenderAPI.GL_SelectTexture( 0 );
+		gRenderAPI.GL_Bind( 0, gHUD.m_WhiteTex );
 
-	if ( xhair_additive->value )
-		gEngfuncs.pTriAPI->RenderMode( kRenderTransAdd );
-	else
-		gEngfuncs.pTriAPI->RenderMode( kRenderTransAlpha );
+		if ( xhair_additive->value )
+			gEngfuncs.pTriAPI->RenderMode( kRenderTransAdd );
+		else
+			gEngfuncs.pTriAPI->RenderMode( kRenderTransAlpha );
+	}
 
 	if ( xhair_dot->value )
 		DrawCrosshairSection( x0, y0, x1, y1 );
@@ -1574,7 +1596,7 @@ void CHudAmmo::DrawCrosshair( int weaponId )
 	DrawCrosshairSection( outer.left, y0, inner.left, y1 );
 	DrawCrosshairSection( inner.right, y0, outer.right, y1 );
 
-	if ( xhair_additive->value )
+	if ( g_iXash && xhair_additive->value )
 		gEngfuncs.pTriAPI->RenderMode( kRenderTransAlpha );
 
 	/* draw padding if wanted */
@@ -1707,7 +1729,7 @@ void CHudAmmo::DrawCrosshair()
 	}
 
 	// drawing
-	if ( g_iXash && xhair_enable->value )
+	if ( xhair_enable->value )   // X CLIENT: kengaytirilgan pritsel GoldSrc (kompyuter) da ham - faqat TriAPI ishlatadi
 	{
 		DrawCrosshair( weaponid );
 		return;

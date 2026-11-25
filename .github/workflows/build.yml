@@ -1,6 +1,7 @@
 name: cssborka.uz Android APK (bitta APK, dvijok ichida)
 on:
   push:
+    branches-ignore: [claude/pc-client]   # kompyuter client.dll sinovi - APK/relizsiz
   workflow_dispatch:
 
 jobs:

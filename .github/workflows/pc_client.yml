@@ -1,0 +1,32 @@
+# Kompyuter (GoldSrc) uchun client.dll - kengaytirilgan pritsel bilan. Sinov: pre-release "pc-client-test"
+name: PC client.dll (GoldSrc)
+on:
+  push:
+    branches: [claude/pc-client]
+  workflow_dispatch:
+jobs:
+  win:
+    runs-on: windows-2022
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          submodules: recursive
+      - name: Yig'ish (Win32, faqat client)
+        shell: pwsh
+        run: |
+          cmake -S . -B build -A Win32 -DBUILD_CLIENT=ON -DBUILD_MAINUI=OFF -DBUILD_SERVER=OFF -DCMAKE_BUILD_TYPE=Release
+          cmake --build build --config Release --target client -j 4
+          Get-ChildItem build -Recurse -Filter "client*.dll" | Select-Object FullName, Length
+          $d = Get-ChildItem build -Recurse -Filter "client*.dll" | Select-Object -First 1
+          New-Item -ItemType Directory -Force out | Out-Null
+          Copy-Item $d.FullName out\client.dll
+      - name: Sinov relizi
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: pc-client-test
+          name: "PC client.dll sinov (pritsel)"
+          prerelease: true
+          make_latest: false
+          files: out/client.dll
