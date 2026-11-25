@@ -1,6 +1,7 @@
 name: cssborka.uz Android APK (bitta APK, dvijok ichida)
 on:
   push:
+    branches-ignore: [claude/ios, claude/pc-client]
   workflow_dispatch:
 
 jobs:

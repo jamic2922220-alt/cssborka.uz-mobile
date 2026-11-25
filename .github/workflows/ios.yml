@@ -1,0 +1,48 @@
+name: X CLIENT iPhone (sinov - imzosiz IPA)
+# 1-bosqich: dvijok (Xash3D FWGS, rasmiy iOS launcheri) + bizning CS client/menyu/server kutubxonalari iPhone uchun yig'iladimi.
+# Imzo yo'q - telefonga o'rnatish uchun keyin Apple Developer sertifikati bilan imzolanadi (havola orqali o'rnatish).
+on:
+  push:
+    branches: [claude/ios]
+  workflow_dispatch:
+
+jobs:
+  ios:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout Xash3D FWGS
+        uses: actions/checkout@v5
+        with:
+          repository: FWGS/xash3d-fwgs
+          submodules: recursive
+      - name: Checkout X CLIENT o'yin kodi
+        uses: actions/checkout@v5
+        with:
+          path: xcgame
+          submodules: recursive
+      - name: Dvijok bog'liqliklari (SDL3, openssl)
+        run: |
+          # rasmiy skript hlsdk ni ham oladi - bizga kerak emas, uni olib tashlaymiz
+          sed -i '' '/hlsdk-portable/d' scripts/gha/deps_ios.sh
+          bash scripts/gha/deps_ios.sh
+      - name: O'yin kutubxonalari (client, menyu, server) - iOS
+        run: |
+          mkdir -p build/ios/libs
+          cmake -S xcgame -B gbuild -DCMAKE_SYSTEM_NAME=iOS -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0 -DCMAKE_OSX_ARCHITECTURES=arm64 \
+            -DCMAKE_BUILD_TYPE=Release -DENABLE_YY_THUNKS=OFF -DCMAKE_INSTALL_PREFIX=$(pwd)/build/ios/libs
+          cmake --build gbuild --config Release -j 4
+          cmake --install gbuild --config Release
+          find build/ios/libs -type f | head -50
+      - name: Launcher (imzosiz)
+        run: |
+          cp -vr /Library/Frameworks/SDL3.xcframework ./
+          cd ios
+          xcodebuild -scheme Launcher -target Launcher build -configuration Release \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" CODE_SIGN_ENTITLEMENTS=""
+          cd ..
+          ls -la build
+          mkdir -p artifacts && mv build/xash3d.ipa artifacts/X-CLIENT-ios-imzosiz.ipa
+      - uses: actions/upload-artifact@v4
+        with:
+          name: X-CLIENT-ios-imzosiz
+          path: artifacts/
