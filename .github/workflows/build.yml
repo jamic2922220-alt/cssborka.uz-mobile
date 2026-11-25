@@ -500,6 +500,33 @@ jobs:
           s = s.replace('CrashReports.writeSystemInfo(this);', '')
           s = re.sub(r'CrashReports\.writeIntentInfo\([^;]*\);', '', s)
           assert 'CrashReports' not in s, 'CrashReports qoldi'
+          # X CLIENT: o'yin paytida Wi-Fi "kam kechikish" rejimida - Android Wi-Fi ni uxlatib, ping 50 dan 170 ga sakramasin
+          k = 'public class XashActivity extends SDLActivity {'
+          assert k in s, k
+          s = s.replace(k, k + """
+          	private android.net.wifi.WifiManager.WifiLock xcWifi;
+          	@Override
+          	protected void onResume() {
+          		super.onResume();
+          		try {
+          			if (xcWifi == null) {
+          				android.net.wifi.WifiManager wm = (android.net.wifi.WifiManager) getApplicationContext().getSystemService(WIFI_SERVICE);
+          				xcWifi = wm.createWifiLock(Build.VERSION.SDK_INT >= 29 ? 4 : 3, "xclient:game");
+          				xcWifi.setReferenceCounted(false);
+          			}
+          			xcWifi.acquire();
+          		} catch (Throwable ignored) {
+          		}
+          	}
+          	@Override
+          	protected void onPause() {
+          		try {
+          			if (xcWifi != null && xcWifi.isHeld()) xcWifi.release();
+          		} catch (Throwable ignored) {
+          		}
+          		super.onPause();
+          	}
+          """, 1)
           open(p, 'w', encoding='utf-8').write(s)
 
           # boost-top: telefon uchun silliq boshqaruv va yengil grafika (har ishga tushganda)
