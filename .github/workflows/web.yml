@@ -1,5 +1,6 @@
 name: X CLIENT Web (brauzerda o'ynash - iPhone Safari)
-# 1-bosqich: bizning CS client / menyu / server kutubxonalari WebAssembly (Emscripten 4.0.9 - dvijok xash3d-fwgs@1.2.2 bilan bir xil) ga yig'iladimi
+# Dvijok: xash3d-fwgs@1.2.2 (npm, WebAssembly, Emscripten 4.0.9). Bizning CS client shu Emscripten bilan side-module qilib yig'iladi.
+# Natija: web-build-N release ga xc_web.zip (sayt fayllari) - serverda mmb/play/ ga ochiladi.
 on:
   push:
     branches: [claude/web]
@@ -15,11 +16,40 @@ jobs:
       - uses: actions/checkout@v5
         with:
           submodules: recursive
-      - name: O'yin kutubxonalari (WebAssembly)
+      - name: CS client (WebAssembly side module)
         run: |
           docker run --rm -v "$PWD":/src -w /src emscripten/emsdk:4.0.9 bash -c '
             set -e
-            emcmake cmake -S . -B wbuild -DCMAKE_BUILD_TYPE=Release -DENABLE_YY_THUNKS=OFF -DMAINUI_USE_STB=ON -DBUILD_SERVER=OFF -DBUILD_MAINUI=OFF
-            cmake --build wbuild -j4
+            emcmake cmake -S . -B wbuild -DCMAKE_BUILD_TYPE=Release -DENABLE_YY_THUNKS=OFF -DMAINUI_USE_STB=ON -DBUILD_SERVER=OFF -DBUILD_MAINUI=OFF \
+              -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_C_FLAGS="-fPIC" -DCMAKE_CXX_FLAGS="-fPIC"
+            cmake --build wbuild -j4 --target client
+            A=$(find wbuild -name "client_emscripten_wasm32.a" | head -1)
+            emcc -O2 -sSIDE_MODULE=1 -Wl,--whole-archive "$A" -Wl,--no-whole-archive -o client.wasm
+            echo "int xc_no_server_lib;" > /tmp/d.c && emcc -O2 -sSIDE_MODULE=1 /tmp/d.c -o server.wasm
           '
-          find wbuild -name "*.wasm" -o -name "*.so" | grep -v CMakeFiles
+          ls -la client.wasm server.wasm
+      - name: Dvijok (npm xash3d-fwgs) + sahifa
+        run: |
+          mkdir -p site npmw && cd npmw
+          npm init -y >/dev/null
+          npm i --silent xash3d-fwgs@1.2.2 fflate@0.8.2 esbuild@0.25.0
+          npx esbuild ../web/main.js --bundle --format=esm --minify --target=es2020 --outfile=../site/main.js
+          cp node_modules/xash3d-fwgs/dist/*.wasm ../site/
+          cd ..
+          cp client.wasm server.wasm web/index.html web/manifest.json web/icon.png site/
+          sed -i "s/__BUILD__/${{ github.run_number }}/" site/index.html
+      - name: O'yin fayllari (brauzer uchun yengil)
+        run: |
+          curl -sL -o cs16_data.zip https://mmb.boost-top.com/mobile/cs16_data.zip
+          python3 scripts/make_web_data.py cs16_data.zip site/xc_web_data.zip
+          V=$(sha1sum site/xc_web_data.zip | cut -c1-10)
+          sed -i "s/__DATA_VER__/$V/" site/main.js
+          grep -c "$V" site/main.js
+          ls -la site
+          (cd site && zip -q -r ../xc_web.zip .)
+      - name: Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create web-build-${{ github.run_number }} xc_web.zip -R ${{ github.repository }} --target ${{ github.sha }} --prerelease \
+            --title "X CLIENT Web - build ${{ github.run_number }}" --notes "Brauzer versiyasi. Serverda mmb/play/ ga ochiladi."

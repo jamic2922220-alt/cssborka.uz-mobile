@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="uz"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="X CLIENT">
+<link rel="apple-touch-icon" href="icon.png"><link rel="manifest" href="manifest.json">
+<title>X CLIENT - CS 1.6</title>
+<style>
+:root{--bg:#0e0f13;--card:#181a21;--fg:#f2f2f5;--mut:#9a9caa;--red:#e5383b;--line:#2a2d38}
+html,body{margin:0;height:100%;background:#000;color:var(--fg);font:16px/1.5 -apple-system,system-ui,Segoe UI,Roboto,sans-serif;overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none}
+#canvas{display:none;position:fixed;inset:0;width:100vw;height:100vh;background:#000}
+#ui{position:fixed;inset:0;overflow:auto;background:var(--bg);padding:max(20px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) 30px max(16px,env(safe-area-inset-left));touch-action:pan-y}
+.w{max-width:520px;margin:0 auto}h1{font-size:28px;margin:6px 0}h1 span{color:var(--red)}.mut{color:var(--mut);font-size:14px}
+.c{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin:14px 0}
+button{font:inherit}#go{display:block;width:100%;background:var(--red);color:#fff;border:0;border-radius:12px;padding:15px;font-weight:700;font-size:18px}
+#go:disabled{opacity:.5}.srv{display:block;width:100%;text-align:left;background:#0b0c10;color:var(--fg);border:1px solid var(--line);border-radius:10px;padding:11px 12px;margin:6px 0}
+.pb{height:8px;background:#0b0c10;border-radius:4px;overflow:hidden;margin:10px 0}#bar{height:100%;width:0;background:var(--red);transition:width .2s}
+ol{padding-left:20px;margin:6px 0}li{margin:3px 0}
+</style></head><body>
+<canvas id="canvas" oncontextmenu="event.preventDefault()"></canvas>
+<div id="ui"><div class="w">
+<h1><span>X</span> CLIENT</h1><div class="mut">CS 1.6 - brauzerda, o'rnatmasdan. iPhone, Android, kompyuter.</div>
+<div class="c"><button id="go">O'ynash</button><div class="pb"><div id="bar"></div></div><div id="st" class="mut">Birinchi marta o'yin fayllari yuklanadi (Wi-Fi tavsiya etiladi), keyingi safar - darhol.</div></div>
+<div class="c"><b>Serverlar</b><div id="srv"></div></div>
+<div class="c"><b>iPhone: ilova kabi qilish</b><ol class="mut"><li>Safari da shu sahifani oching.</li><li>Pastdagi «Ulashish» (□↑) tugmasi → <b>«Bosh ekranga qo'shish»</b>.</li><li>Bosh ekrandagi X CLIENT belgisidan oching - to'liq ekranda ochiladi.</li><li>Telefonni yotqizib (gorizontal) o'ynang.</li></ol></div>
+</div></div>
+<script type="module" src="main.js?v=__BUILD__"></script>
+</body></html>
