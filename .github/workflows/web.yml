@@ -19,7 +19,7 @@ jobs:
         run: |
           docker run --rm -v "$PWD":/src -w /src emscripten/emsdk:4.0.9 bash -c '
             set -e
-            emcmake cmake -S . -B wbuild -DCMAKE_BUILD_TYPE=Release -DENABLE_YY_THUNKS=OFF -DMAINUI_USE_STB=ON
+            emcmake cmake -S . -B wbuild -DCMAKE_BUILD_TYPE=Release -DENABLE_YY_THUNKS=OFF -DMAINUI_USE_STB=ON -DBUILD_SERVER=OFF -DBUILD_MAINUI=OFF
             cmake --build wbuild -j4
           '
           find wbuild -name "*.wasm" -o -name "*.so" | grep -v CMakeFiles
