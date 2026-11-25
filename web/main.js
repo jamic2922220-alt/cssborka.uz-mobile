@@ -129,7 +129,7 @@ function onLog(t) {
   if (/processing downloaded/.test(t)) loading(true, 'Server fayllari olinmoqda...', 40);
   if (/Connecting to |Commencing connection retry|reconnecting/.test(t)) loading(true, 'Serverga ulanmoqda...');
   else if (/Connection accepted|Signon|precach|Loading decals|processing downloaded/i.test(t)) loading(true, "Xarita va fayllar yuklanmoqda...", 30);
-  else if (/CL_SignonReply: 2/.test(t)) { loading(false); retries = 0; if (XG) XG.Cmd_ExecuteString('cl_allowdownload 1'); setTimeout(saveDownloads, 3000); }
+  else if (/BT: in game|CL_SignonReply: 2/.test(t)) { loading(false); retries = 0; if (XG) XG.Cmd_ExecuteString('cl_allowdownload 1'); setTimeout(saveDownloads, 3000); }
   else if (!dlBusy && !reconnecting() && /Server connection timed out|Connection refused|Server disconnected|kicked|banned|Bad password/i.test(t)) { loading(false); }
   let m = /Connecting to (\d{1,3}(?:\.\d{1,3}){3}:\d+)/.exec(t);
   if (m && m[1] !== SERVER) { SERVER = m[1]; retries = 0; }
@@ -217,7 +217,7 @@ async function start(connect) {
     const x = new Xash3D({
       canvas: $('canvas'),
       renderer: 'gl4es',
-      arguments: ['-game', 'cstrike', '-dev', '2', '+con_notifytime', '0', '+touch_enable', '1', '+_vgui_menus', '0'].concat(connect ? ['+connect', connect] : []),
+      arguments: ['-game', 'cstrike', '+con_notifytime', '0', '+scr_drawversion', '0', '+touch_enable', '1', '+_vgui_menus', '0'].concat(connect ? ['+connect', connect] : []),
       libraries: { client: 'client.wasm', menu: 'libmenu.wasm', server: 'server.wasm' },
       filesMap: { 'xash.wasm': 'xash.wasm', 'filesystem_stdio.wasm': 'filesystem_stdio.wasm', 'libref_webgl2.wasm': 'libref_webgl2.wasm', 'libref_soft.wasm': 'libref_soft.wasm' },
       module: { print: (t) => onLog(t), printErr: (t) => onLog(t) },   // -dev 2: signon xabarlari kerak; konsolga chiqarilmaydi (tezlik)

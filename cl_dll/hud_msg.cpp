@@ -97,6 +97,9 @@ int CHud :: MsgFunc_ViewMode( const char *pszName, int iSize, void *pbuf )
 
 int CHud :: MsgFunc_InitHUD( const char *pszName, int iSize, void *pbuf )
 {
+#ifdef __EMSCRIPTEN__
+	if( pszName ) gEngfuncs.Con_Printf( "BT: in game\n" );   // brauzer sahifasi yuklanish ekranini shu belgi bilan yopadi
+#endif
 	// prepare all hud data
 	HUDLIST *pList = m_pHudList;
 
