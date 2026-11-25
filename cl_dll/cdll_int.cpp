@@ -109,6 +109,9 @@ int DLLEXPORT Initialize( cl_enginefunc_t *pEnginefuncs, int iVersion )
 	CVAR_CREATE("cl_oldtouchmenus", "0", FCVAR_CLIENTDLL | FCVAR_ARCHIVE);
 
 	sscanf( CVAR_GET_STRING( "host_ver" ), "%d", &g_iXash );
+#ifdef __EMSCRIPTEN__
+	if( g_iXash < MIN_XASH_VERSION ) g_iXash = MIN_XASH_VERSION; // brauzer dvijogi (xash3d-fwgs npm): host_ver da build raqami yo'q, lekin dvijok yangi
+#endif
 
 	Game_HookEvents();
 	CL_LoadParticleMan();
@@ -424,6 +427,9 @@ int DLLEXPORT HUD_GetRenderInterface( int version, render_api_t *renderfuncs, re
 	// we didn't send callbacks to engine, because we don't use it
 	// *callback = renderInterface;
 
+#ifdef __EMSCRIPTEN__
+	if( g_iXash < MIN_XASH_VERSION ) g_iXash = MIN_XASH_VERSION; // brauzer dvijogi (xash3d-fwgs npm): host_ver da build raqami yo'q, lekin dvijok yangi
+#endif
 	// we have here a Host_Error, so check Xash for version
 	if( g_iXash < MIN_XASH_VERSION )
 	{
