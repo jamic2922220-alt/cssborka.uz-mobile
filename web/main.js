@@ -232,7 +232,7 @@ async function start(connect) {
       renderer: 'gl4es',
       arguments: ['-game', 'cstrike', '-dev', '1', '+con_notifytime', '0', '+scr_drawversion', '0', '+touch_enable', '1', '+_vgui_menus', '0'].concat(connect ? ['+connect', connect] : []),
       libraries: { client: 'client.wasm', menu: 'libmenu.wasm', server: 'server.wasm' },
-      filesMap: { 'xash.wasm': 'xash.wasm', 'filesystem_stdio.wasm': 'filesystem_stdio.wasm', 'libref_webgl2.wasm': 'libref_webgl2.wasm', 'libref_soft.wasm': 'libref_soft.wasm' },
+      filesMap: { 'xash.wasm': Q.get('mem') === '512' ? 'xash512.wasm' : 'xash.wasm', 'filesystem_stdio.wasm': 'filesystem_stdio.wasm', 'libref_webgl2.wasm': 'libref_webgl2.wasm', 'libref_soft.wasm': 'libref_soft.wasm' },
       module: { print: (t) => onLog(t), printErr: (t) => onLog(t) },   // -dev 2: signon xabarlari kerak; konsolga chiqarilmaydi (tezlik)
     });
     const sender = new WsSender(RELAYS);
@@ -246,6 +246,8 @@ async function start(connect) {
     window.XC = x;
     try { x.main(); } catch (e) { if (e !== Infinity && e !== 'unwind') throw e; }   // Emscripten asosiy tsikli shunday "chiqadi" - bu xato emas
   } catch (e) {
+    /* telefon 768 MB xotira bermadi - 512 MB li dvijok bilan qayta */
+    if (Q.get('mem') !== '512' && /memory|RangeError|OOM|allocat/i.test(String(e && (e.message || e)))) { location.search = '?mem=512'; return; }
     say('Xato: ' + (e && e.message || e) + '. Sahifani yangilab qayta urinib ko\'ring.');
     $('go').disabled = false;
   }
