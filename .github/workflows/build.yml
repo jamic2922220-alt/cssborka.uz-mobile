@@ -546,6 +546,8 @@ jobs:
               'r_decals "100"',
               'mp_decals "50"',
               'cl_timeout "25"',
+              '// nik oldiga "[Xash3D]" qo\'shilmasin (X CLIENT o\'zi "X | " qo\'shadi)',
+              'cl_advertise_engine_in_name "0"',
               'cl_autoreconnect "1"',
               "// server fayl bermasa qotib qolmaslik: 20 s siljimasa o'tkazib yuboriladi",
               'cl_dl_stuck "20"',

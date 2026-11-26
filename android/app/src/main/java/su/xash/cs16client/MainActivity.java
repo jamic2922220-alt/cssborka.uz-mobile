@@ -884,6 +884,7 @@ public class MainActivity extends Activity {
                     {"cl_minmodels", "low".equals(p.getString("gfx", "high")) ? "1" : "0"},
                     {"r_decals", "low".equals(p.getString("gfx", "high")) ? "20" : "100"},
                     {"developer", "0"},
+                    {"cl_advertise_engine_in_name", "0"},   // dvijok nik oldiga "[Xash3D]" qo'shmasin (o'rniga "X | ")
                     {"scr_drawversion", "1"},   // menyu burchagida "X CLIENT v49/..." (dvijok nomi X CLIENT ga almashtirilgan)
                     // ovozli chat: doim yoqilgan (tugmani bosib turib gapiriladi)
                     {"voice_enable", "1"},
