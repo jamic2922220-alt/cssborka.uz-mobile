@@ -13,7 +13,9 @@ BASE_WADS = {'decals', 'cached', 'gfx', 'fonts', 'spraypaint', 'tempdecal', 'pld
 HL_SOUNDS = {'scientist', 'barney', 'tride', 'holo', 'hgrunt', 'zombie', 'houndeye', 'bullchicken', 'gman', 'nihilanth', 'x',
              'agrunt', 'aslave', 'controller', 'garg', 'headcrab', 'hassault', 'ichy', 'leech', 'roach', 'squeek', 'tentacle',
              'turret', 'apache', 'osprey', 'bigmomma', 'boid', 'babygarg', 'fvox', 'vox', 'hornet', 'gonarch', 'kingpin'}
-SKIP_EXT = ('.so', '.dll', '.dylib', '.nav', '.exe', '.pdb')
+# .so/.dll/.dylib (o'yin kutubxonalari) brauzerda ishlamaydi, lekin QOLADI: server anti-chitlari (Vanga va b.) ularning
+# hash ini tekshiradi - fayl bo'lmasa (hash 00000000) "Anti Smoke" deb chiqarib yuboradi
+SKIP_EXT = ('.nav', '.exe', '.pdb')
 zi = zipfile.ZipFile(src)
 names = [i.filename for i in zi.infolist()]
 
@@ -39,7 +41,7 @@ print('wad:', sorted(wads)); print('osmon:', sorted(skies))
 def keep(n):
     l = n.lower()
     if l.endswith('/') or l.endswith(SKIP_EXT): return False
-    if '/overviews/' in l or l.startswith('valve/maps/') or '/cl_dlls/' in l or '/dlls/' in l: return False
+    if '/overviews/' in l or l.startswith('valve/maps/'): return False
     m = map_of(n)
     if m and m not in KEEP_MAPS: return False
     if re.match(r'(valve|cstrike)/[^/]+\.wad$', l) and os.path.splitext(os.path.basename(l))[0] not in wads: return False
