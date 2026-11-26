@@ -230,7 +230,7 @@ async function start(connect) {
     const x = new Xash3D({
       canvas: $('canvas'),
       renderer: 'gl4es',
-      arguments: ['-game', 'cstrike', '-dev', '1', '+con_notifytime', '0', '+scr_drawversion', '0', '+touch_enable', '1', '+_vgui_menus', '0'].concat(connect ? ['+connect', connect] : []),
+      arguments: ['-game', 'cstrike', '-dev', '1', '+con_notifytime', '0', '+scr_drawversion', '0', '+cl_advertise_engine_in_name', '0', '+touch_enable', '1', '+_vgui_menus', '0'].concat(connect ? ['+connect', connect] : []),
       libraries: { client: 'client.wasm', menu: 'libmenu.wasm', server: 'server.wasm' },
       filesMap: { 'xash.wasm': Q.get('mem') === '512' ? 'xash512.wasm' : 'xash.wasm', 'filesystem_stdio.wasm': 'filesystem_stdio.wasm', 'libref_webgl2.wasm': 'libref_webgl2.wasm', 'libref_soft.wasm': 'libref_soft.wasm' },
       module: { print: (t) => onLog(t), printErr: (t) => onLog(t) },   // -dev 2: signon xabarlari kerak; konsolga chiqarilmaydi (tezlik)
