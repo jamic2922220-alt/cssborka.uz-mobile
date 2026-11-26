@@ -106,9 +106,16 @@ async function mountZip(FS, z, root) {
  * Brauzerdagi dvijok HTTP orqali yuklay olmaydi ("no servers to download ..."). Bunday fayllarni sahifa o'zi
  * ko'prik orqali (/xcws/dl) yuklaydi, FS ga yozadi, keshlaydi va serverga qayta ulanadi (retry). */
 let SERVER = '', XG = null, reconnT = 0;
-const reconnecting = () => Date.now() - reconnT < 5000;
+const reconnecting = () => Date.now() < reconnT || Date.now() - reconnT < 5000;
 const MISS = new Set(); let missTm = 0, dlBusy = false, retries = 0;
 function note(t) { const n = $('note'); if (!n) return; n.textContent = t; n.style.display = t ? 'block' : 'none'; }
+/* ulanib bo'lmadi - dvijok konsoli o'rniga tushunarli xabar + "Qayta urinish" */
+function failBox(t) {
+  loading(true, "Serverga kirib bo'lmadi: " + String(t).replace(/\^\d|\[[\d:]+\]\s*|Error:\s*/g, '').slice(0, 80), 100);
+  clearInterval(loadTm);
+  $('lx').textContent = 'Qayta urinish';
+  $('lx').onclick = () => { $('lx').textContent = 'Bekor qilish'; $('lx').onclick = cancelLoad; retries = 0; if (XG) { XG.Cmd_ExecuteString('cl_allowdownload 1'); XG.Cmd_ExecuteString('connect ' + SERVER); } };
+}
 /* APK dagidek yuklanish ekrani: ulanishdan xaritaga kirguncha (CL_SignonReply: 2) - konsol xatolari va pushti kataklar ko'rinmaydi */
 let loadOn = false, loadP = 0, loadTm = 0;
 function loading(on, text, p) {
@@ -142,7 +149,8 @@ function onLog(t) {
   if (/Connecting to |Commencing connection retry|reconnecting/.test(t)) loading(true, 'Serverga ulanmoqda...');
   else if (/Connection accepted|Signon|precach|Loading decals|processing downloaded/i.test(t)) loading(true, "Xarita va fayllar yuklanmoqda...", 30);
   else if (/BT: in game|CL_SignonReply: 2/.test(t)) { loading(false); retries = 0; if (XG) XG.Cmd_ExecuteString('cl_allowdownload 1'); setTimeout(saveDownloads, 3000); }
-  else if (!dlBusy && !reconnecting() && /Server connection timed out|Connection refused|Server disconnected|kicked|banned|Bad password/i.test(t)) { loading(false); }
+  else if (/server failed to transmit file/.test(t) && SERVER && !dlBusy && !reconnecting()) { retries = Math.max(retries, 2); reconnT = Date.now(); XG.Cmd_ExecuteString('disconnect'); XG.Cmd_ExecuteString('cl_allowdownload 0'); const sv = SERVER; setTimeout(() => XG && XG.Cmd_ExecuteString('connect ' + sv), 800); loading(true, "Serverga qayta ulanmoqda...", 85); }
+  else if (!dlBusy && !reconnecting() && /Server connection timed out|Connection refused|Server disconnected|kicked|banned|Bad password|couldn't connect/i.test(t)) { failBox(t); }
   let m = /Connecting to (\d{1,3}(?:\.\d{1,3}){3}:\d+)/.exec(t);
   if (m && m[1] !== SERVER) { SERVER = m[1]; retries = 0; }
   m = /no servers to download (\S+)/.exec(t);
@@ -151,6 +159,8 @@ function onLog(t) {
 async function fetchMissing() {
   if (dlBusy || !MISS.size || !XG) return;
   dlBusy = true;
+  /* dvijok bu fayllarni o'zi ololmaydi va boshqa fayllarda osilib/uzilib qoladi - fayllar tayyor bo'lguncha serverdan chiqamiz */
+  reconnT = Date.now() + 600000; XG.Cmd_ExecuteString('disconnect');
   const list = [...MISS]; MISS.clear();
   let cache = null; try { cache = await caches.open('xc-dl'); } catch (e) {}
   let done = 0, ok = 0;
@@ -267,5 +277,6 @@ fetch('https://mmb.boost-top.com/servers.php').then((r) => r.json()).then((l) =>
   }
 }).catch(() => {});
 $('go').onclick = () => start('212.47.58.89:27015');
-$('lx').onclick = () => { sendDbg('bekor'); if (XG) XG.Cmd_ExecuteString('disconnect'); loading(false); };
+function cancelLoad() { sendDbg('bekor'); if (XG) XG.Cmd_ExecuteString('disconnect'); loading(false); }
+$('lx').onclick = cancelLoad;
 if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
